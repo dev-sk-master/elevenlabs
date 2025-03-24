@@ -259,6 +259,7 @@ const SpeechToText = () => {
 
       // Speech detection logic
       if (volume >= SPEECH_THRESHOLD && !hasSpokenRef.current) {
+        console.log('User started speaking!');
         hasSpokenRef.current = true;
         startNewRecording();
       }
@@ -266,6 +267,7 @@ const SpeechToText = () => {
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         if (!silenceTimerRef.current) {
           silenceTimerRef.current = setTimeout(() => {
+            console.log('Silence detected, sending audio chunk...');
             if (mediaRecorderRef.current?.state === 'recording') {
               mediaRecorderRef.current.stop();
             }
@@ -280,6 +282,9 @@ const SpeechToText = () => {
 
     checkSilence();
   };
+
+
+
 
   const startNewRecording = () => {
     // Initialize fresh recorder for each speech segment
