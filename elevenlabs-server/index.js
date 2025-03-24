@@ -16,6 +16,9 @@ app.use(express.json());
 // Enable CORS for development
 app.use(cors());
 
+app.get('/api/v1/hello', (req, res) => {
+  res.json({ message: 'Hello from ESM Express on Netlify!' });
+});
 
 
 // Another route (optional)
@@ -54,5 +57,8 @@ app.post('/api/v1/speechToText',
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on ${PORT}`);
 });
+
+export default app;
+
