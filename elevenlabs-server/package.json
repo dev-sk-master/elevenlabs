@@ -6,12 +6,13 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+     "start": "node netlify/functions/express.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@netlify/functions": "^3.0.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "elevenlabs": "^1.54.0",
