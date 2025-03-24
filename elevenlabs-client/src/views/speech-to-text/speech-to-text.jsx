@@ -163,7 +163,7 @@ const SpeechToText = () => {
     formData.append('audio', audioBlob, 'speech.webm');
 
     try {
-      const response = await fetch('http://localhost:3000/api/v1/speechToText', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/speechToText`, {
         method: 'POST',
         headers: {
           'Content-Type': 'audio/webm' // or audio/mpeg (should match your MediaRecorder)
