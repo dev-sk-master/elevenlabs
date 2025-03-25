@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import languages from "../../data/languages.json"; // ✅ Import JSON file
+import { v4 as uuidv4 } from 'uuid';
+import moment from 'moment'; // Ensure you have moment installed
+
 
 
 const SpeechToText = () => {
@@ -329,8 +332,15 @@ const SpeechToText = () => {
     const audioBlob = new Blob(chunks, { type: mimeType });
     const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
 
+    const uuid = uuidv4(); // Generate a unique ID
+    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    // Step 1: Add the entry with ID before sending the request
+    setTranscriptions(prev => [...prev, { uuid, timestamp, status: 'pending', audio: { url: audioUrl, mimeType } }]);
+
+
     try {
-     
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`, {
         method: 'POST',
         body: audioBlob,
@@ -343,10 +353,18 @@ const SpeechToText = () => {
       }
 
       const data = await response.json();
-      setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
+      //setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
+      // Step 2: Update transcription with server response
+      setTranscriptions(prev =>
+        prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'done' } : item))
+      );
     } catch (error) {
       console.error('Transcription error:', error);
-      setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
+      //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
+      // Step 2 (Error Case): Update transcription with error message
+      setTranscriptions(prev =>
+        prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'error' } : item))
+      );
     }
   }
 
@@ -413,19 +431,20 @@ const SpeechToText = () => {
       <div className="mt-4 text-start">
         <h4>Transcriptions:</h4>
         <ul className="list-group">
-          {transcriptions.map((transcription, idx) => (
-            <li key={idx} className="list-group-item">
-              <p>{transcription?.text || transcription?.error}</p>
-              {transcription.audio && (<>
-                <audio controls>
-                  <source src={transcription.audio.url} type={transcription.audio.mimeType} />
-                  Your browser does not support the audio element.
-                </audio>
-                <p>MimeType: {transcription.audio.mimeType}</p>
-              </>
-              )}
-            </li>
-          ))}
+          {[...transcriptions]
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((transcription, idx) => (
+              <li key={idx} className="list-group-item">
+                {transcription?.status == 'pending' ? <p>Processing...</p> : <p>{transcription?.text || transcription?.error}</p>}
+                {transcription.audio && (<>
+                  <audio controls>
+                    <source src={transcription.audio.url} type={transcription.audio.mimeType} />
+                    Your browser does not support the audio element.
+                  </audio>
+                  <p>MimeType: {transcription.audio.mimeType}</p>
+                </>
+                )}
+              </li>
+            ))}
         </ul>
       </div>
     </div>

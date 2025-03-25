@@ -12,11 +12,13 @@
   "dependencies": {
     "@11labs/react": "^0.0.8",
     "bootstrap": "^5.3.3",
+    "moment": "^2.30.1",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.9",
     "react-dom": "^19.0.0",
     "react-helmet-async": "^2.0.5",
-    "react-router-dom": "^7.4.0"
+    "react-router-dom": "^7.4.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
