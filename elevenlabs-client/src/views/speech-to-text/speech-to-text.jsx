@@ -196,7 +196,7 @@ const SpeechToText = () => {
   // }, []);
 
 
-  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000 })
+  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000 })
   const formDataRef = useRef(formData);
 
   const [isRecording, setIsRecording] = useState(false);
@@ -210,11 +210,13 @@ const SpeechToText = () => {
   const analyserRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const hasSpokenRef = useRef(false);
+  const chunksTimerRef = useRef(null);
+  const recordingRef = useRef(null);
 
   // Audio detection parameters
   const SPEECH_THRESHOLD = 0.02;
   const SILENCE_THRESHOLD = 0.01;
-  const SILENCE_DURATION = 2000;
+  const SILENCE_DURATION = 1000;
 
   const handleStartRecording = async () => {
     try {
@@ -305,38 +307,68 @@ const SpeechToText = () => {
 
 
   const startNewRecording = () => {
+    const uuid = uuidv4(); // Generate a unique ID
+    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    recordingRef.current = { uuid, timestamp };
     // Initialize fresh recorder for each speech segment
     audioChunksRef.current = [];
     const mediaRecorder = new MediaRecorder(streamRef.current, {
       //mimeType: 'audio/webm; codecs=opus'      
     });
 
+
     mediaRecorderRef.current = mediaRecorder;
 
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         audioChunksRef.current.push(event.data);
+        console.log('ondataavilable', audioChunksRef.current.length)
+        const mimeType = mediaRecorder.mimeType;
+        sendAudioToServer(audioChunksRef.current, mimeType);
       }
     };
 
     mediaRecorder.onstop = () => {
-      const mimeType = mediaRecorder.mimeType;
-
-      sendAudioToServer(audioChunksRef.current, mimeType);
+      // const mimeType = mediaRecorder.mimeType;
+      // sendAudioToServer(audioChunksRef.current, mimeType);
+      if (chunksTimerRef.current) {
+        clearInterval(chunksTimerRef.current)
+      }
     };
 
     mediaRecorder.start();
+
+
+    // Send audio every 'chunksDuration' milliseconds
+    chunksTimerRef.current = setInterval(() => {
+      if (mediaRecorder.state === "recording") {
+        console.log("Sending chunk...");
+        mediaRecorder.requestData();
+        //const mimeType = mediaRecorder.mimeType;
+        //sendAudioToServer(audioChunksRef.current, mimeType);
+      }
+    }, formDataRef.current.chunksDuration);
+
   };
 
   const sendAudioToServer = async (chunks, mimeType) => {
     const audioBlob = new Blob(chunks, { type: mimeType });
     const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
 
-    const uuid = uuidv4(); // Generate a unique ID
-    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+    // const uuid = uuidv4(); // Generate a unique ID
+    // const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    const { uuid, timestamp } = recordingRef.current;
 
     // Step 1: Add the entry with ID before sending the request
-    setTranscriptions(prev => [...prev, { uuid, timestamp, status: 'pending', audio: { url: audioUrl, mimeType } }]);
+    //setTranscriptions(prev => [...prev, { uuid, timestamp, status: 'pending', audio: { url: audioUrl, mimeType } }]);
+    setTranscriptions(prev => {
+      const exists = prev.some(item => item.uuid === uuid);
+      return exists
+        ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing' } : item))
+        : [...prev, { uuid, timestamp, status: 'processing', audio: { url: audioUrl, mimeType } }];
+    });
 
 
     try {
@@ -356,14 +388,14 @@ const SpeechToText = () => {
       //setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
       // Step 2: Update transcription with server response
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'done' } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'completed' } : item))
       );
     } catch (error) {
       console.error('Transcription error:', error);
       //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
       // Step 2 (Error Case): Update transcription with error message
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'error' } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'completed' } : item))
       );
     }
   }
@@ -380,41 +412,57 @@ const SpeechToText = () => {
     <div className="container text-center mt-5">
       <h2>Speech Recorder (Send on Pause)</h2>
 
-      <div className="mb-3">
-        <label className="form-label">Select Language:</label>
-        <select
-          className="form-select w-25 mx-auto"
-          value={formData.language || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, language: e.target.value || null }))
-          }
-        >
-          <option value="auto">Auto Detect</option>
-          {languages.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {lang.name}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      <div className="mb-3">
-        <label className="form-label">Pause Control (milliseconds):</label>
-        <select
-          className="form-select w-25 mx-auto"
-          value={formData.silenceDuration || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, silenceDuration: e.target.value || null }))
-          }
-        >
-          {Array.from({ length: 10 }, (_, i) => (i + 1) * 1000).map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="row">
+        <div className="col-md-4">
+          <div className="mb-3">
+            <label className="form-label">Select Language:</label>
+            <select
+              className="form-select w-50 mx-auto"
+              value={formData.language || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, language: e.target.value || null }))
+              }
+            >
+              <option value="auto">Auto Detect</option>
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
+        </div>
+        <div className="col-md-4">
+          <div className="mb-3">
+            <label className="form-label">Pause Control (milliseconds):</label>
+            <input
+              type="number"
+              className="form-control w-50 mx-auto"
+              value={formData.silenceDuration || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null }))
+              }
+              min="0"
+            />
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="mb-3">
+            <label className="form-label">Chunks Control (milliseconds):</label>
+            <input
+              type="number"
+              className="form-control w-50 mx-auto"
+              value={formData.chunksDuration || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, chunksDuration: Number(e.target.value) || null }))
+              }
+              min="0"
+            />
+          </div>
+        </div>
+      </div>
 
 
       <div className="my-4">
@@ -434,7 +482,16 @@ const SpeechToText = () => {
           {[...transcriptions]
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((transcription, idx) => (
               <li key={idx} className="list-group-item">
-                {transcription?.status == 'pending' ? <p>Processing...</p> : <p>{transcription?.text || transcription?.error}</p>}
+                {transcription?.status === 'processing' ? (
+                  <p>Processing...</p>
+                ) : (
+                  <p>
+                    {transcription?.text || transcription?.error}
+                    {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                  </p>
+                )}
+
+
                 {transcription.audio && (<>
                   <audio controls>
                     <source src={transcription.audio.url} type={transcription.audio.mimeType} />
