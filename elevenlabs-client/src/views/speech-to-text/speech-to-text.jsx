@@ -413,11 +413,13 @@ const SpeechToText = () => {
           {transcriptions.map((transcription, idx) => (
             <li key={idx} className="list-group-item">
               <p>{transcription?.text || transcription?.error}</p>
-              {transcription.audio && (
+              {transcription.audio && (<>
                 <audio controls>
                   <source src={transcription.audio.url} type={transcription.audio.mimeType} />
                   Your browser does not support the audio element.
                 </audio>
+                <p>MimeType: {transcription.audio.mimeType}</p>
+              </>
               )}
             </li>
           ))}
