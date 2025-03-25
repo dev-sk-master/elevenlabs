@@ -326,24 +326,27 @@ const SpeechToText = () => {
   };
 
   const sendAudioToServer = async (chunks, mimeType) => {
+    const audioBlob = new Blob(chunks, { type: mimeType });
+    const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
+
     try {
-
-      const audioBlob = new Blob(chunks, { type: mimeType });
-      const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
-
+     
       const response = await fetch(`${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`, {
         method: 'POST',
         body: audioBlob,
         headers: { 'Content-Type': mimeType }
       });
 
-      if (!response.ok) throw new Error('Transcription failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || `Transcription failed with status ${response.status}`);
+      }
 
       const data = await response.json();
       setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
     } catch (error) {
       console.error('Transcription error:', error);
-      setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
+      setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
     }
   }
 
