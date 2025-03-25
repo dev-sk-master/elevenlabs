@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import languages from "../../data/languages.json"; // ✅ Import JSON file
+
 
 const SpeechToText = () => {
   // const [isRecording, setIsRecording] = useState(false);
@@ -190,6 +192,10 @@ const SpeechToText = () => {
   //   };
   // }, []);
 
+
+  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 2000 })
+  const formDataRef = useRef(formData);
+
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
 
@@ -248,6 +254,8 @@ const SpeechToText = () => {
     detectSilence();
   };
 
+
+
   const detectSilence = () => {
     const analyser = analyserRef.current;
     const dataArray = new Uint8Array(analyser.fftSize);
@@ -257,13 +265,22 @@ const SpeechToText = () => {
       const amplitude = dataArray.reduce((acc, val) => acc + Math.abs(val - 128), 0) / dataArray.length;
       const volume = amplitude / 128;
 
-      // Speech detection logic
-      if (volume >= SPEECH_THRESHOLD && !hasSpokenRef.current) {
-        console.log('User started speaking!');
-        hasSpokenRef.current = true;
-        startNewRecording();
+      // Handle speech detection (both initial and resumed speech)
+      if (volume >= SPEECH_THRESHOLD) {
+        if (!hasSpokenRef.current) {
+          console.log('User started speaking!');
+          hasSpokenRef.current = true;
+          startNewRecording();
+        } else {
+          // Clear silence timer if user resumes speaking
+          if (silenceTimerRef.current) {
+            console.log('User resumes speaking!');
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+          }
+        }
       }
-      // Silence detection logic
+      // Handle silence detection
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         if (!silenceTimerRef.current) {
           silenceTimerRef.current = setTimeout(() => {
@@ -273,7 +290,7 @@ const SpeechToText = () => {
             }
             hasSpokenRef.current = false;
             silenceTimerRef.current = null;
-          }, SILENCE_DURATION);
+          }, formData.silenceDuration || SILENCE_DURATION);
         }
       }
 
@@ -284,13 +301,11 @@ const SpeechToText = () => {
   };
 
 
-
-
   const startNewRecording = () => {
     // Initialize fresh recorder for each speech segment
     audioChunksRef.current = [];
     const mediaRecorder = new MediaRecorder(streamRef.current, {
-      mimeType: 'audio/webm; codecs=opus'
+      //mimeType: 'audio/webm; codecs=opus'      
     });
 
     mediaRecorderRef.current = mediaRecorder;
@@ -302,37 +317,85 @@ const SpeechToText = () => {
     };
 
     mediaRecorder.onstop = () => {
-      sendAudioToServer(audioChunksRef.current);
+      const mimeType = mediaRecorder.mimeType;
+
+      sendAudioToServer(audioChunksRef.current, mimeType);
     };
 
     mediaRecorder.start();
   };
 
-  const sendAudioToServer = async (chunks) => {
+  const sendAudioToServer = async (chunks, mimeType) => {
     try {
-      const audioBlob = new Blob(chunks, { type: 'audio/webm' });
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/speechToText`, {
+      const audioBlob = new Blob(chunks, { type: mimeType });
+      const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`, {
         method: 'POST',
         body: audioBlob,
-        headers: { 'Content-Type': 'audio/webm' }
+        headers: { 'Content-Type': mimeType }
       });
 
       if (!response.ok) throw new Error('Transcription failed');
 
       const data = await response.json();
-      setTranscriptions(prev => [...prev, data]);
+      setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
     } catch (error) {
       console.error('Transcription error:', error);
+      setTranscriptions(prev => [...prev, { ...data, audio: { url: audioUrl, mimeType } }]);
     }
-  };
+  }
 
   // Cleanup on component unmount
   useEffect(() => () => handleStopRecording(), []);
 
+  // Keep languageRef updated
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
   return (
     <div className="container text-center mt-5">
       <h2>Speech Recorder (Send on Pause)</h2>
+
+      <div className="mb-3">
+        <label className="form-label">Select Language:</label>
+        <select
+          className="form-select w-25 mx-auto"
+          value={formData.language || ""}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, language: e.target.value || null }))
+          }
+        >
+          <option value="auto">Auto Detect</option>
+          {languages.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-3">
+        <label className="form-label">Pause Control (milliseconds):</label>
+        <select
+          className="form-select w-25 mx-auto"
+          value={formData.silenceDuration || ""}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, silenceDuration: e.target.value || null }))
+          }
+        >
+          {Array.from({ length: 10 }, (_, i) => (i + 1) * 1000).map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+      </div>
+
+
+
       <div className="my-4">
         <button
           className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg`}
@@ -349,7 +412,13 @@ const SpeechToText = () => {
         <ul className="list-group">
           {transcriptions.map((transcription, idx) => (
             <li key={idx} className="list-group-item">
-              {transcription.text}
+              <p>{transcription?.text || transcription?.error}</p>
+              {transcription.audio && (
+                <audio controls>
+                  <source src={transcription.audio.url} type={transcription.audio.mimeType} />
+                  Your browser does not support the audio element.
+                </audio>
+              )}
             </li>
           ))}
         </ul>

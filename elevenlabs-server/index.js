@@ -23,12 +23,20 @@ app.get('/api/v1/hello', (req, res) => {
 
 // Another route (optional)
 app.post('/api/v1/speechToText',
-  express.raw({ type: 'audio/webm', limit: '50mb' }),
+  express.raw({ type: '*/*', limit: '50mb' }),
   async (req, res) => {
     try {
+      // Get MIME type from request headers
+      const mimeType = req.headers['content-type'];
+
       // req.body is a Buffer containing the raw audio data
       const audioBuffer = req.body;
+      const language = req.query.language || null; // Get language from URL params
+
       console.log('Received audio buffer size:', audioBuffer.length);
+      console.log('Language:', language);
+      console.log('MIME Type:', mimeType); // Log MIME type for debugging
+
 
       // If you want to log the first few bytes for debugging:
       console.log('Buffer preview:', audioBuffer.slice(0, 20));
@@ -36,13 +44,13 @@ app.post('/api/v1/speechToText',
       const client = new ElevenLabsClient();
 
       // Convert the buffer into a Blob
-      const audioBlob = new Blob([audioBuffer], { type: "audio/webm" }); // Or "audio/webm" depending on your frontend format
+      const audioBlob = new Blob([audioBuffer], { type: mimeType }); // Or "audio/webm" depending on your frontend format
 
       const transcription = await client.speechToText.convert({
         file: audioBlob,
         model_id: "scribe_v1", // Model to use, for now only "scribe_v1" is support.
         tag_audio_events: false, // Tag audio events like laughter, applause, etc.
-        language_code: null, // Language of the audio file. If set to null, the model will detect the language automatically.
+        language_code: language, // Language of the audio file. If set to null, the model will detect the language automatically.
         diarize: false, // Whether to annotate who is speaking
       });
 
