@@ -199,6 +199,12 @@ const SpeechToText = () => {
   const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000 })
   const formDataRef = useRef(formData);
 
+  // Keep languageRef updated
+  useEffect(() => {
+    console.log('formData', formData)
+    formDataRef.current = formData;
+  }, [formData]);
+
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
 
@@ -220,6 +226,13 @@ const SpeechToText = () => {
 
   const handleStartRecording = async () => {
     try {
+      const uuid = uuidv4(); // Generate a unique ID
+      const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+
+      recordingRef.current = { uuid, timestamp };
+      audioChunksRef.current = [];
+
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setIsRecording(true);
@@ -307,12 +320,12 @@ const SpeechToText = () => {
 
 
   const startNewRecording = () => {
-    const uuid = uuidv4(); // Generate a unique ID
-    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+    // const uuid = uuidv4(); // Generate a unique ID
+    // const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
 
-    recordingRef.current = { uuid, timestamp };
+    // recordingRef.current = { uuid, timestamp };
     // Initialize fresh recorder for each speech segment
-    audioChunksRef.current = [];
+    //audioChunksRef.current = [];
     const mediaRecorder = new MediaRecorder(streamRef.current, {
       //mimeType: 'audio/webm; codecs=opus'      
     });
@@ -403,10 +416,7 @@ const SpeechToText = () => {
   // Cleanup on component unmount
   useEffect(() => () => handleStopRecording(), []);
 
-  // Keep languageRef updated
-  useEffect(() => {
-    formDataRef.current = formData;
-  }, [formData]);
+
 
   return (
     <div className="container text-center mt-5">
