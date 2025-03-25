@@ -196,7 +196,7 @@ const SpeechToText = () => {
   // }, []);
 
 
-  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 500, chunksDuration: 5000 })
+  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000 })
   const formDataRef = useRef(formData);
 
   const [isRecording, setIsRecording] = useState(false);
