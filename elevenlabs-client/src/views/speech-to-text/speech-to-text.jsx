@@ -6,6 +6,7 @@ import moment from 'moment'; // Ensure you have moment installed
 
 
 
+
 const SpeechToText = () => {
   // const [isRecording, setIsRecording] = useState(false);
   // const [transcriptions, setTranscriptions] = useState([]);
@@ -196,7 +197,7 @@ const SpeechToText = () => {
   // }, []);
 
 
-  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translate_language: "en" })
+  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en" })
   const formDataRef = useRef(formData);
 
   // Keep languageRef updated
@@ -223,6 +224,7 @@ const SpeechToText = () => {
   const SPEECH_THRESHOLD = 0.02;
   const SILENCE_THRESHOLD = 0.01;
   const SILENCE_DURATION = 1000;
+
 
   const handleStartRecording = async () => {
     try {
@@ -295,6 +297,7 @@ const SpeechToText = () => {
       // Handle silence detection
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         if (!silenceTimerRef.current) {
+          //console.log('Silence duration timeout set: ', formDataRef.current.silenceDuration);
           silenceTimerRef.current = setTimeout(() => {
             console.log('Silence detected, sending audio chunk...');
             if (mediaRecorderRef.current?.state === 'recording') {
@@ -302,7 +305,7 @@ const SpeechToText = () => {
             }
             hasSpokenRef.current = false;
             silenceTimerRef.current = null;
-          }, formData.silenceDuration || SILENCE_DURATION);
+          }, formDataRef.current.silenceDuration || SILENCE_DURATION);
         }
       }
 
@@ -433,7 +436,7 @@ const SpeechToText = () => {
         method: 'POST',
         body: JSON.stringify({
           text: data?.text || "",
-          target: formDataRef.current.translate_language
+          target: formDataRef.current.translateLanguage
         }),
         headers: { 'Content-Type': "application/json" }
       });
@@ -462,12 +465,18 @@ const SpeechToText = () => {
   // Cleanup on component unmount
   useEffect(() => () => handleStopRecording(), []);
 
+  const cleanHtml = (html) => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    let decodedHtml = doc.documentElement.textContent;
+    //return decodedHtml.replace(/[\[\]{}()<>\s]+/g, " ").trim(); // Remove brackets
+    return decodedHtml.replace(/\s*\([^)]*\)\s*/g, " ").trim();// Remove contents from brackets
+  };
+
 
 
   return (
     <div className="container text-center mt-5">
       <h2>Speech Recorder (Send on Pause)</h2>
-
 
       <div className="row">
         <div className="col-md-4">
@@ -543,9 +552,9 @@ const SpeechToText = () => {
             <label className="form-label d-block">Translate Language:</label>
             <select
               className="form-select w-50 d-inline-block"
-              value={formData.translate_language || ""}
+              value={formData.translateLanguage || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, translate_language: e.target.value || null }))
+                setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
               }
             >
               {languages.map((lang) => (
@@ -566,7 +575,7 @@ const SpeechToText = () => {
                       <p>Processing...</p>
                     ) : (
                       <p>
-                        {transcription?.text || transcription?.error}
+                        {cleanHtml(transcription?.text || transcription?.error)}
                         {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                       </p>
                     )}
@@ -586,7 +595,7 @@ const SpeechToText = () => {
                       <p>Processing...</p>
                     ) : (
                       <p>
-                        {transcription?.translate?.text || transcription?.translate?.error}
+                        {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
                         {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                       </p>
                     )}
