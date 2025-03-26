@@ -466,6 +466,7 @@ const SpeechToText = () => {
   useEffect(() => () => handleStopRecording(), []);
 
   const cleanHtml = (html) => {
+    if (!html) return ""; // Return blank if html is undefined or falsy
     const doc = new DOMParser().parseFromString(html, "text/html");
     let decodedHtml = doc.documentElement.textContent;
     //return decodedHtml.replace(/[\[\]{}()<>\s]+/g, " ").trim(); // Remove brackets
