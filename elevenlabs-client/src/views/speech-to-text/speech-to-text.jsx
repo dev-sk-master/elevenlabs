@@ -571,7 +571,7 @@ const SpeechToText = () => {
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((transcription, idx) => (
               <li key={idx} className="list-group-item">
                 <div className='row'>
-                  <div className="col-6">
+                  <div className="col-md-6">
                     {transcription?.status === 'processing' ? (
                       <p>Processing...</p>
                     ) : (
@@ -591,7 +591,7 @@ const SpeechToText = () => {
                     </>
                     )}
                   </div>
-                  <div className="col-6">
+                  <div className="col-md-6">
                     {transcription?.translate?.status === 'processing' ? (
                       <p>Processing...</p>
                     ) : (
