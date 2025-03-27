@@ -225,6 +225,16 @@ const SpeechToText = () => {
   const SILENCE_THRESHOLD = 0.01;
   const SILENCE_DURATION = 1000;
 
+  // Create a generator instance
+  const getSnappedDuration = createSteppedDynamicDurationGenerator({
+    min: 500,
+    max: 2500,
+    granularity: 100, // Snap to the nearest 100
+    stepAmount: 250,  // Average change per step (before snap)
+    randomness: 80    // Randomness per step
+  });
+
+
 
   const handleStartRecording = async () => {
     try {
@@ -288,7 +298,7 @@ const SpeechToText = () => {
         } else {
           // Clear silence timer if user resumes speaking
           if (silenceTimerRef.current) {
-            console.log('User resumes speaking!');
+            console.log('User resumes speaking!', hasSpokenRef.current);
             clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = null;
           }
@@ -297,7 +307,12 @@ const SpeechToText = () => {
       // Handle silence detection
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         if (!silenceTimerRef.current) {
-          //console.log('Silence duration timeout set: ', formDataRef.current.silenceDuration);
+          const dynamicDuration = getSnappedDuration();
+          console.log('Silence duration timeout set: ', dynamicDuration);
+          setFormData((prev) => ({
+            ...prev,
+            silenceDuration: dynamicDuration // Use the generated value here
+          }));
           silenceTimerRef.current = setTimeout(() => {
             console.log('Silence detected, sending audio chunk...');
             if (mediaRecorderRef.current?.state === 'recording') {
@@ -305,7 +320,7 @@ const SpeechToText = () => {
             }
             hasSpokenRef.current = false;
             silenceTimerRef.current = null;
-          }, formDataRef.current.silenceDuration || SILENCE_DURATION);
+          }, dynamicDuration);
         }
       }
 
@@ -473,6 +488,124 @@ const SpeechToText = () => {
     return decodedHtml.replace(/\s*\([^)]*\)\s*/g, " ").trim();// Remove contents from brackets
   };
 
+  /**
+ * Creates a function that generates dynamic duration values, snapped to a specific granularity.
+ * The generated values tend to move towards min/max boundaries and reverse direction,
+ * with some randomness added at each step, and the final output is rounded to the nearest
+ * multiple of 'granularity'.
+ *
+ * @param {object} options - Configuration options.
+ * @param {number} options.min - The minimum duration value.
+ * @param {number} options.max - The maximum duration value.
+ * @param {number} [options.granularity=1] - The step value to snap the output to (e.g., 100). Output will be a multiple of this.
+ * @param {number} [options.initialValue=(min+max)/2] - The starting duration value (will be snapped initially).
+ * @param {number} [options.initialDirection=1 or -1] - The initial direction (1 for increasing, -1 for decreasing). Randomly chosen if not provided.
+ * @param {number} [options.stepAmount=(max-min)/10] - The average amount to change the value by in each step (before randomness and snapping). Determines speed of change.
+ * @param {number} [options.randomness=stepAmount/2] - The maximum random deviation (+/-) added to each step. Adds variability.
+ * @returns {function(): number} A function that, when called, returns the next snapped dynamic duration.
+ */
+  function createSteppedDynamicDurationGenerator({
+    min,
+    max,
+    granularity = 1, // Default to 1 (no snapping)
+    initialValue,
+    initialDirection,
+    stepAmount,
+    randomness
+  }) {
+    if (typeof min !== 'number' || typeof max !== 'number' || min >= max) {
+      throw new Error("Valid 'min' and 'max' numbers required, with min < max.");
+    }
+    if (typeof granularity !== 'number' || granularity <= 0) {
+      throw new Error("Valid 'granularity' number greater than 0 required.");
+    }
+
+    // --- Helper function for snapping ---
+    const snap = (value, grid) => Math.round(value / grid) * grid;
+
+    // --- Set Defaults ---
+    const range = max - min;
+    const defaultInitial = min + range / 2;
+
+    // Snap the initial value
+    let currentValue = snap(
+      (typeof initialValue === 'number')
+        ? Math.max(min, Math.min(max, initialValue)) // Clamp initial value
+        : defaultInitial,
+      granularity
+    );
+    // Ensure snapped initial value is still within bounds
+    currentValue = Math.max(min, Math.min(max, currentValue));
+
+    // Random initial direction if not specified
+    let direction = (typeof initialDirection === 'number')
+      ? (initialDirection > 0 ? 1 : -1)
+      : (Math.random() < 0.5 ? 1 : -1);
+
+    // Average step size, e.g., 1/10th of the range by default
+    let avgStep = (typeof stepAmount === 'number' && stepAmount > 0)
+      ? stepAmount
+      : Math.max(granularity, range / 10); // Ensure step is at least granularity or 1/10th range
+
+    // Random variation around the step, e.g., +/- half the step by default
+    let randomFactor = (typeof randomness === 'number' && randomness >= 0)
+      ? randomness
+      : avgStep / 2;
+
+    // --- The Generator Function (Closure) ---
+    return function getNextDuration() {
+      // 1. Calculate the intended raw step + randomness
+      const randomDeviation = (Math.random() * 2 - 1) * randomFactor; // Range: -randomFactor to +randomFactor
+      const currentStep = direction * avgStep + randomDeviation;
+
+      // 2. Calculate the potential next *raw* value
+      let potentialNextRawValue = currentValue + currentStep;
+
+      // 3. Check boundaries using the *raw* potential value and reverse if needed
+      //    This prevents getting stuck if a snapped value is right at the boundary.
+      let hitBoundary = false;
+      if (potentialNextRawValue >= max) {
+        potentialNextRawValue = max; // Clamp raw value for snapping calculation
+        if (direction === 1) { // Only reverse if we were moving towards max
+          direction = -1;
+          hitBoundary = true;
+        }
+      } else if (potentialNextRawValue <= min) {
+        potentialNextRawValue = min; // Clamp raw value for snapping calculation
+        if (direction === -1) { // Only reverse if we were moving towards min
+          direction = 1;
+          hitBoundary = true;
+        }
+      }
+
+      // 4. Snap the potential value to the granularity grid
+      let nextSnappedValue = snap(potentialNextRawValue, granularity);
+
+      // 5. Ensure the snapped value is strictly within bounds
+      nextSnappedValue = Math.max(min, Math.min(max, nextSnappedValue));
+
+      // 6. Avoid getting stuck at a boundary if step size is small relative to granularity
+      // If we hit a boundary and the snapped value is the same as the current,
+      // force a step away from the boundary in the new direction.
+      if (hitBoundary && nextSnappedValue === currentValue) {
+        // Calculate a step in the new direction and snap again
+        const forcedStep = direction * avgStep + (Math.random() * 2 - 1) * randomFactor;
+        potentialNextRawValue = currentValue + forcedStep;
+        nextSnappedValue = snap(potentialNextRawValue, granularity);
+        // Re-clamp after forced step
+        nextSnappedValue = Math.max(min, Math.min(max, nextSnappedValue));
+      }
+
+
+      // 7. Update the state for the *next* call using the snapped value
+      currentValue = nextSnappedValue;
+
+      // 8. Return the snapped value
+      return currentValue;
+    };
+  }
+
+
 
 
   return (
@@ -514,6 +647,7 @@ const SpeechToText = () => {
               }
               min="0"
             />
+
           </div>
         </div>
         <div className="col-md-4">
