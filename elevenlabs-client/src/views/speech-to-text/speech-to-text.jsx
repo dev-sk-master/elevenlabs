@@ -491,11 +491,13 @@ const SpeechToText = () => {
               }
             >
               <option value="auto">Auto Detect</option>
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
+              {languages
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -558,11 +560,13 @@ const SpeechToText = () => {
                 setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
               }
             >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
+              {languages
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
