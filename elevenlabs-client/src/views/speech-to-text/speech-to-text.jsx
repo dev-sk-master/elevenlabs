@@ -306,18 +306,15 @@ const SpeechToText = () => {
           const latestItem = transcriptionsRef.current?.at(-1) ?? null;
           console.log('latestItem', latestItem)
 
-          const userSetDuration = formDataRef.current.userSetDuration || 1000; // Default user-set duration
-          const minDuration = 500; // Minimum allowed duration
+          const userSetDuration = formDataRef.current.userSetDuration || 1000;
+          const minDuration = 500;
 
-          // Progressive scaling: Adjust exponent (0.5-0.9) for smoother scaling
-          const reduction = latestItem?.text
-            ? Math.pow(latestItem.text.length, 0.8)
-            : 0;
+          const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1) * 3, userSetDuration - minDuration) : 0;
 
           let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
-          // Round to the nearest 
           dynamicDuration = Math.round(dynamicDuration / 50) * 50;
-        
+
+
           console.log('Silence duration timeout set: ', dynamicDuration);
           setFormData((prev) => ({
             ...prev,
