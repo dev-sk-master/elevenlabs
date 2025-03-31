@@ -309,7 +309,7 @@ const SpeechToText = () => {
           const userSetDuration = formDataRef.current.userSetDuration || 1000;
           const minDuration = 500;
 
-          const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1) * 3, userSetDuration - minDuration) : 0;
+          const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1.2) * 3, userSetDuration - minDuration) : 0;
 
           let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
           dynamicDuration = Math.round(dynamicDuration / 50) * 50;
