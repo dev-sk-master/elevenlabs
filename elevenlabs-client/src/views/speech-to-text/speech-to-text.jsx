@@ -197,7 +197,7 @@ const SpeechToText = () => {
   // }, []);
 
 
-  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en" })
+  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en", userSetDuration: 1000 })
   const formDataRef = useRef(formData);
 
   // Keep languageRef updated
@@ -208,6 +208,12 @@ const SpeechToText = () => {
 
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
+
+  const transcriptionsRef = useRef(transcriptions);
+  useEffect(() => {
+    console.log('transcriptions', transcriptions)
+    transcriptionsRef.current = transcriptions;
+  }, [transcriptions]);
 
   // Refs for managing audio resources and state
   const mediaRecorderRef = useRef(null);
@@ -307,7 +313,22 @@ const SpeechToText = () => {
       // Handle silence detection
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         if (!silenceTimerRef.current) {
-          const dynamicDuration = getSnappedDuration();
+          const latestItem = transcriptionsRef.current?.at(-1) ?? null;
+          console.log('latestItem', latestItem)
+
+          const userSetDuration = formDataRef.current.userSetDuration || 1000; // Default user-set duration
+          const minDuration = 500; // Minimum allowed duration
+
+          // Progressive scaling: Adjust exponent (0.5-0.9) for smoother scaling
+          const reduction = latestItem?.text
+            ? Math.pow(latestItem.text.length, 0.8)
+            : 0;
+
+          let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
+          // Round to the nearest 
+          dynamicDuration = Math.round(dynamicDuration / 50) * 50;
+
+          //const dynamicDuration = getSnappedDuration();
           console.log('Silence duration timeout set: ', dynamicDuration);
           setFormData((prev) => ({
             ...prev,
@@ -643,7 +664,7 @@ const SpeechToText = () => {
               className="form-control w-50 mx-auto"
               value={formData.silenceDuration || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null }))
+                setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null, userSetDuration: Number(e.target.value) || null }))
               }
               min="0"
             />
