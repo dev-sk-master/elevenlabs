@@ -743,7 +743,7 @@ const SpeechToText = () => {
                             key={`transcription-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
-                            className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                            className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                           >
                             {transcription.status === 'processing' ? (
                               'Processing...'
@@ -776,7 +776,7 @@ const SpeechToText = () => {
                             key={`translation-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
-                            className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                            className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                           >
                             {transcription?.translate?.status === 'processing' ? (
                               'Processing...'
