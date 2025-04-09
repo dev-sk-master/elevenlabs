@@ -3,6 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import languages from "../../data/languages.json"; // ✅ Import JSON file
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment'; // Ensure you have moment installed
+import { isMobile } from 'react-device-detect';
 
 
 
@@ -428,6 +429,15 @@ const SpeechToText = () => {
       await translateData(uuid, data)
     } catch (error) {
       console.error('Transcription error:', error);
+
+      setTranscriptions(prev =>
+        prev.map(item => (item.uuid === uuid ? {
+          ...item, text: `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+
+`, status: 'completed'
+        } : item))
+      );
+      return;
       //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
       // Step 2 (Error Case): Update transcription with error message
       setTranscriptions(prev =>
@@ -475,6 +485,7 @@ const SpeechToText = () => {
       );
     } catch (error) {
       console.error('Translate error:', error);
+
       //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
       // Step 2 (Error Case): Update transcription with error message
       setTranscriptions(prev =>
@@ -511,6 +522,32 @@ const SpeechToText = () => {
   const listTranscriptions = [...transcriptions].sort(
     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
   );
+
+  const scrollRef = useRef(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // Tolerance for pixel rounding
+    setAutoScroll(isAtBottom);
+  };
+
+  useEffect(() => {
+    if (autoScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [listTranscriptions, autoScroll]);
+
+  const [activeColumn, setActiveColumn] = useState(0); // 0 = transcription, 1 = translation
+
+  const toggleColumn = (direction) => {
+    setActiveColumn((prev) => {
+      if (direction === 'next') return prev === 0 ? 1 : 0;
+      if (direction === 'prev') return prev === 1 ? 0 : 1;
+      return prev;
+    });
+  };
 
   return (
     <div className="container text-center mt-5">
@@ -609,56 +646,96 @@ const SpeechToText = () => {
           </div>
         </div>
 
-        {listTranscriptions.length > 0 ? (<div className='row'>
-          <div className="col-md-6 mb-2">
+        {listTranscriptions.length > 0 ? (
+          <>
+            {/* Toggle Buttons (Only show on mobile) */}
+            {isMobile && (
+              <div className="d-md-none d-flex justify-content-between mb-2">
+                <div>
+                  {activeColumn === 1 && (
+                    <button
+                      onClick={() => toggleColumn('prev')}
+                      className="btn btn-sm btn-outline-primary"
+                    >
+                      ← Transcription
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  {activeColumn === 0 && (
+                    <button
+                      onClick={() => toggleColumn('next')}
+                      className="btn btn-sm btn-outline-primary"
+                    >
+                      Translation →
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className='card h-100'>
-              <div className='card-body'>
-                {listTranscriptions
-                  .map((transcription, idx) => (
-                    <p
-                      key={`transcription-${idx}`}
-                      onMouseEnter={() => handleMouseEnter(idx)}
-                      onMouseLeave={handleMouseLeave}
-                      className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
-                    >
-                      {transcription.status === 'processing' ? (
-                        'Processing...'
-                      ) : (
-                        <>
-                          {cleanHtml(transcription?.text || transcription?.error)}
-                          {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
-                        </>
-                      )}
-                    </p>
-                  ))}
+              <div
+                className='card-body overflow-auto'
+                ref={scrollRef}
+                onScroll={handleScroll}
+                style={{ maxHeight: '400px' }} // You can adjust this max height
+
+              >
+                <div className='row'>
+                  {(activeColumn === 0 || !isMobile) && (
+                    <div className="col-md-6 mb-2">
+
+                      {listTranscriptions
+                        .map((transcription, idx) => (
+                          <p
+                            key={`transcription-${idx}`}
+                            onMouseEnter={() => handleMouseEnter(idx)}
+                            onMouseLeave={handleMouseLeave}
+                            className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                          >
+                            {transcription.status === 'processing' ? (
+                              'Processing...'
+                            ) : (
+                              <>
+                                {cleanHtml(transcription?.text || transcription?.error)}
+                                {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                              </>
+                            )}
+                          </p>
+                        ))}
+
+                    </div>
+                  )}
+
+                  {(activeColumn === 1 || !isMobile) && (
+                    <div className="col-md-6 mb-2">
+
+                      {listTranscriptions
+                        .map((transcription, idx) => (
+                          <p
+                            key={`translation-${idx}`}
+                            onMouseEnter={() => handleMouseEnter(idx)}
+                            onMouseLeave={handleMouseLeave}
+                            className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                          >
+                            {transcription?.translate?.status === 'processing' ? (
+                              'Processing...'
+                            ) : (
+                              <>
+                                {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
+                                {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                              </>
+                            )}
+                          </p>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="col-md-6 mb-2">
-            <div className='card  h-100'>
-              <div className='card-body'>
-                {listTranscriptions
-                  .map((transcription, idx) => (
-                    <p
-                      key={`translation-${idx}`}
-                      onMouseEnter={() => handleMouseEnter(idx)}
-                      onMouseLeave={handleMouseLeave}
-                      className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
-                    >
-                      {transcription?.translate?.status === 'processing' ? (
-                        'Processing...'
-                      ) : (
-                        <>
-                          {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
-                          {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
-                        </>
-                      )}
-                    </p>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>) : null}
+          </>
+        ) : null}
 
         {/* <h6>Debug</h6>
         <ul className="list-group">
