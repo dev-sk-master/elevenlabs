@@ -316,6 +316,10 @@ const SpeechToText = () => {
     transcriptionsRef.current = transcriptions;
 
     console.log('previous', prevTranscriptions)
+    //avoid reset case
+    if (transcriptions.length == 0 && prevTranscriptions && prevTranscriptions.length > 0) {
+      return;
+    }
 
     if (prevTranscriptions && Array.isArray(prevTranscriptions)) {
       const prevMap = new Map(prevTranscriptions.map(t => [t.uuid, t]));
@@ -335,7 +339,7 @@ const SpeechToText = () => {
       }
 
       if (changedTranscriptions.length > 0) {
-        //console.log('🔁 Changes:', changedTranscriptions);
+        console.log('🔁 Changes:', changedTranscriptions);
         socket.emit('transcriptions', {
           roomId: room?.roomId,
           transcriptions: changedTranscriptions,
