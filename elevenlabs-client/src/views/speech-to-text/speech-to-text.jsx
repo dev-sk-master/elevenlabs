@@ -547,48 +547,6 @@ const SpeechToText = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
   const [combinedAudio, setCombinedAudio] = useState(null);
 
-  // useEffect(() => {
-  //   const combineAudioChunks = async () => {
-  //     if (transcriptions.length === 0) return;
-
-  //     try {
-  //       // Get all audio chunks from transcriptions in chronological order
-  //       const sortedTranscriptions = [...transcriptions].sort(
-  //         (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-  //       );
-
-  //       // Get the mimeType from the first valid transcription
-  //       const mimeType = sortedTranscriptions[0]?.audio?.mimeType;
-
-  //       // Filter out any transcriptions that don't have chunks yet
-  //       const validTranscriptions = sortedTranscriptions.filter(t => t.audio?.chunks?.length > 0);
-
-  //       if (validTranscriptions.length === 0) return;
-
-  //       // Create a new blob from all chunks in order
-  //       const allChunks = validTranscriptions.flatMap(t => t.audio.chunks);
-
-  //       // Create a new blob with all chunks combined
-  //       const combinedBlob = new Blob(allChunks, { type: mimeType });
-
-  //       // Create new URL
-  //       const newUrl = URL.createObjectURL(combinedBlob);
-
-  //       // Only revoke old URL after new one is created
-  //       // if (combinedAudio) {
-  //       //   URL.revokeObjectURL(combinedAudioUrl);
-  //       // }
-
-  //       // Set new URL
-  //       setCombinedAudio({ url: newUrl, mimeType });
-  //     } catch (error) {
-  //       console.error('Error combining audio chunks:', error);
-  //     }
-  //   };
-
-  //   combineAudioChunks();
-  // }, [transcriptions]);
-
   const handleMouseEnter = (index) => {
     setHoveredIndex(index);
   };
