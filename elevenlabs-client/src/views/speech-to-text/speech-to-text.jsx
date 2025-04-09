@@ -10,7 +10,7 @@ import usePrevious from '../../hooks/usePrevious';
 
 
 // Socket connection and room management
-const socket = io('http://localhost:8675');
+const socket = io(`${import.meta.env.VITE_SOCKET_URL}`);
 //const roomId = uuidv4(); // Generate a unique room ID on page load
 
 const SpeechToText = () => {
