@@ -496,7 +496,21 @@ const SpeechToText = () => {
   };
 
 
+  const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
 
+  const handleMouseEnter = (index) => {
+    setHoveredIndex(index);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredIndex(null);
+  };
+
+
+  // Sort transcriptions once outside the map if possible, for slight optimization
+  const listTranscriptions = [...transcriptions].sort(
+    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  );
 
   return (
     <div className="container text-center mt-5">
@@ -595,14 +609,18 @@ const SpeechToText = () => {
           </div>
         </div>
 
-        <div className='row'>
+        {listTranscriptions.length > 0 ? (<div className='row'>
           <div className="col-md-6 mb-2">
             <div className='card h-100'>
               <div className='card-body'>
-                {[...transcriptions]
-                  .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                {listTranscriptions
                   .map((transcription, idx) => (
-                    <p key={`transcription-${idx}`}>
+                    <p
+                      key={`transcription-${idx}`}
+                      onMouseEnter={() => handleMouseEnter(idx)}
+                      onMouseLeave={handleMouseLeave}
+                      className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                    >
                       {transcription.status === 'processing' ? (
                         'Processing...'
                       ) : (
@@ -619,10 +637,14 @@ const SpeechToText = () => {
           <div className="col-md-6 mb-2">
             <div className='card  h-100'>
               <div className='card-body'>
-                {[...transcriptions]
-                  .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                {listTranscriptions
                   .map((transcription, idx) => (
-                    <p key={`transcription-${idx}`}>
+                    <p
+                      key={`translation-${idx}`}
+                      onMouseEnter={() => handleMouseEnter(idx)}
+                      onMouseLeave={handleMouseLeave}
+                      className={hoveredIndex === idx ? 'bg-warning px-1' : ''} // Apply class if hovered
+                    >
                       {transcription?.translate?.status === 'processing' ? (
                         'Processing...'
                       ) : (
@@ -636,8 +658,9 @@ const SpeechToText = () => {
               </div>
             </div>
           </div>
-        </div>
-        <h6>Debug</h6>
+        </div>) : null}
+
+        {/* <h6>Debug</h6>
         <ul className="list-group">
           {[...transcriptions]
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((transcription, idx) => (
@@ -677,7 +700,7 @@ const SpeechToText = () => {
                 </div>
               </li>
             ))}
-        </ul>
+        </ul> */}
       </div>
     </div>
   );
