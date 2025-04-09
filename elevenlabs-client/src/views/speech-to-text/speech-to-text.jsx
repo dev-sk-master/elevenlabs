@@ -401,8 +401,8 @@ const SpeechToText = () => {
     setTranscriptions(prev => {
       const exists = prev.some(item => item.uuid === uuid);
       return exists
-        ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing', audio: { ...item.audio, url: audioUrl, mimeType } } : item))
-        : [...prev, { uuid, timestamp, status: 'processing', audio: { url: audioUrl, mimeType } }];
+        ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing', audio: { ...item.audio, url: audioUrl, mimeType, chunks } } : item))
+        : [...prev, { uuid, timestamp, status: 'processing', audio: { url: audioUrl, mimeType, chunks } }];
     });
 
 
@@ -508,6 +508,43 @@ const SpeechToText = () => {
 
 
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
+  const [combinedAudioUrl, setCombinedAudioUrl] = useState(null);
+
+  useEffect(() => {
+    const combineAudioChunks = async () => {
+      if (transcriptions.length === 0) return;
+
+      try {
+        // Get all audio chunks from transcriptions
+        const audioChunks = transcriptions
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+          .filter(t => t.audio?.chunks && t.audio.chunks.length > 0)
+          .map(t => t.audio.chunks);
+
+        if (audioChunks.length === 0) return;
+
+        // Flatten the array of chunks
+        const flattenedChunks = audioChunks.flat();
+        
+        // Get the mimeType from the first chunk
+        const mimeType = transcriptions[0]?.audio?.mimeType || 'audio/webm';
+
+        // Create a new blob from all chunks
+        const combinedBlob = new Blob(flattenedChunks, { type: mimeType });
+        const url = URL.createObjectURL(combinedBlob);
+        setCombinedAudioUrl(url);
+
+        // Cleanup function
+        return () => {
+          if (url) URL.revokeObjectURL(url);
+        };
+      } catch (error) {
+        console.error('Error combining audio chunks:', error);
+      }
+    };
+
+    combineAudioChunks();
+  }, [transcriptions]);
 
   const handleMouseEnter = (index) => {
     setHoveredIndex(index);
@@ -548,6 +585,8 @@ const SpeechToText = () => {
       return prev;
     });
   };
+
+
 
   return (
     <div className="container text-center mt-5">
@@ -646,6 +685,17 @@ const SpeechToText = () => {
           </div>
         </div>
 
+       
+        {listTranscriptions.length > 0 && combinedAudioUrl && (
+          <div className="mb-4">
+            <h6>Full Recording:</h6>
+            <audio controls className="w-100">
+              <source src={combinedAudioUrl} type="audio/webm" />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
+
         {listTranscriptions.length > 0 ? (
           <>
             {/* Toggle Buttons (Only show on mobile) */}
@@ -688,7 +738,7 @@ const SpeechToText = () => {
 
                       {listTranscriptions
                         .map((transcription, idx) => (
-                          <p
+                          <div
                             key={`transcription-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
@@ -700,9 +750,17 @@ const SpeechToText = () => {
                               <>
                                 {cleanHtml(transcription?.text || transcription?.error)}
                                 {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                                {transcription?.audio?.url && hoveredIndex === idx && (
+                                  <div className="mt-2">
+                                    <audio controls className="w-100">
+                                      <source src={transcription.audio.url} type={transcription.audio.mimeType} />
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  </div>
+                                )}
                               </>
                             )}
-                          </p>
+                          </div>
                         ))}
 
                     </div>
@@ -713,7 +771,7 @@ const SpeechToText = () => {
 
                       {listTranscriptions
                         .map((transcription, idx) => (
-                          <p
+                          <div
                             key={`translation-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
@@ -727,7 +785,7 @@ const SpeechToText = () => {
                                 {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                               </>
                             )}
-                          </p>
+                          </div>
                         ))}
                     </div>
                   )}
