@@ -4,9 +4,14 @@ import languages from "../../data/languages.json"; // ✅ Import JSON file
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment'; // Ensure you have moment installed
 import { isMobile } from 'react-device-detect';
+import { io } from 'socket.io-client';
+import isEqual from 'lodash/isEqual'; // npm install lodash
+import usePrevious from '../../hooks/usePrevious';
 
 
-
+// Socket connection and room management
+const socket = io('http://localhost:8675');
+//const roomId = uuidv4(); // Generate a unique room ID on page load
 
 const SpeechToText = () => {
   // const [isRecording, setIsRecording] = useState(false);
@@ -197,7 +202,7 @@ const SpeechToText = () => {
   //   };
   // }, []);
 
-
+  const [room, setRoom] = useState(null);
   const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en", userSetDuration: 1000 })
   const formDataRef = useRef(formData);
 
@@ -207,13 +212,138 @@ const SpeechToText = () => {
     formDataRef.current = formData;
   }, [formData]);
 
+  // Socket connection and room management
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '').trim();
+
+    // Connect to socket server
+    socket.connect();
+
+    // Handle connection events
+    socket.on('connect', () => {
+      console.log('Connected to socket server');
+      // Create room after successful connection
+      //socket.emit('create-room', roomId);
+      // if (hash) {
+      //   setTimeout(() => {
+      //     setRoomFormData((prev) => ({ ...prev, roomId: hash }));
+      //     setTimeout(() => {
+      //       handleJoinRoom()
+      //     }, 1000)
+      //   }, 1000)
+      // }
+
+      if (hash) {
+        // Set roomId from URL hash, then attempt to join the room
+        setRoomFormData((prev) => {
+          const updated = { ...prev, roomId: hash };
+          // Call join immediately after setting roomFormData
+          // Assumes handleJoinRoom uses updated roomFormData
+          setTimeout(() => {
+            handleJoinRoom(hash);
+          }, 300);
+          return updated;
+        });
+      }
+
+    });
+
+    // Handle room creation
+    // socket.on('room-created', ({ roomId }) => {
+    //   console.log(`Room ${roomId} created successfully`);
+    //   // Join room after creation
+    //   //socket.emit('join-room', roomId);
+    // });
+
+    // Handle user join
+    /* socket.on('user-joined', ({ userId, roomId }) => {
+      console.log(`User ${userId} joined room ${roomId}`);
+    }); */
+
+    socket.on('transcriptions', ({ senderId, roomId, transcriptions }) => {
+      console.log(`📨 Transcriptions from ${senderId} for room ${roomId}:`, transcriptions);
+
+      setTranscriptions(prev => {
+        const map = new Map(prev.map(t => [t.uuid, t]));
+
+        for (const t of transcriptions) {
+          if (map.has(t.uuid)) {
+            const existing = map.get(t.uuid);
+            map.set(t.uuid, {
+              ...existing,
+              ...t,
+              audio: {
+                ...existing.audio,
+                ...t.audio
+              }
+            });
+          } else {
+            map.set(t.uuid, t);
+          }
+        }
+
+        return Array.from(map.values());
+      });
+
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+    });
+
+    // Handle errors
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
+
+    // Cleanup on component unmount
+    return () => {
+      if (room && room.roomId) {
+        socket.emit('leave-room', room.roomId);
+      }
+      socket.disconnect();
+    };
+  }, []);
+
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
 
   const transcriptionsRef = useRef(transcriptions);
+  const prevTranscriptions = usePrevious(transcriptions);
   useEffect(() => {
     console.log('transcriptions', transcriptions)
     transcriptionsRef.current = transcriptions;
+
+    console.log('previous', prevTranscriptions)
+
+    if (prevTranscriptions && Array.isArray(prevTranscriptions)) {
+      const prevMap = new Map(prevTranscriptions.map(t => [t.uuid, t]));
+      const changedTranscriptions = [];
+
+      for (const current of transcriptions) {
+        const prev = prevMap.get(current.uuid);
+        if (!prev) {
+          // New transcription
+          changedTranscriptions.push(current);
+        } else if (!isEqual(prev, current)) {
+          console.log('Prev:', JSON.stringify(prev, null, 2));
+          console.log('Curr:', JSON.stringify(current, null, 2));
+          // Updated transcription
+          changedTranscriptions.push(current);
+        }
+      }
+
+      if (changedTranscriptions.length > 0) {
+        //console.log('🔁 Changes:', changedTranscriptions);
+        socket.emit('transcriptions', {
+          roomId: room?.roomId,
+          transcriptions: changedTranscriptions,
+        });
+      }
+    }
+
+
   }, [transcriptions]);
 
   // Refs for managing audio resources and state
@@ -238,6 +368,7 @@ const SpeechToText = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setIsRecording(true);
+      setTranscriptions([]);
       setCombinedAudio(null); // Clear combined audio when starting new recording
       setupAudioAnalysis(stream);
     } catch (error) {
@@ -587,75 +718,138 @@ const SpeechToText = () => {
     });
   };
 
+  const [roomFormData, setRoomFormData] = useState({ roomId: null });
+
+  const handleJoinRoom = (roomId) => {
+    socket.emit('join-room', roomId || roomFormData.roomId);
+    setRoom({ roomId: roomFormData.roomId, role: 'user' })
+  }
+
+  const handleCreateRoom = () => {
+    let roomId = uuidv4();
+    socket.emit('create-room', roomId);
+    setRoom({ roomId: roomId, role: 'owner' })
+    window.location.hash = roomId;
+  }
+
+
+  if (!room) {
+    return (
+      <div className="container text-center mt-5">
+        <h2>Create or Join a Room</h2>
+        <div className="row justify-content-center mt-4">
+          <div className="col-md-6">
+            <input
+              type="text"
+              className="form-control mb-3"
+              placeholder="Enter Room ID"
+              value={roomFormData.roomId}
+              onChange={(e) => {
+                setRoomFormData((prev) => ({
+                  ...prev,
+                  roomId: e.target.value,
+                }));
+              }}
+            />
+            <div className="d-grid gap-2">
+              <button
+                className="btn btn-primary"
+                onClick={() => handleJoinRoom()}
+              // disabled={!roomId.trim()}
+              >
+                Join Room
+              </button>
+
+              OR
+
+              <button
+                className="btn btn-success"
+                onClick={() => handleCreateRoom()}
+              // disabled={!roomId.trim()}
+              >
+                Create Room
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
 
 
   return (
     <div className="container text-center mt-5">
       <h2>Speech Recorder (Send on Pause)</h2>
 
-      <div className="row">
-        <div className="col-md-4">
-          <div className="mb-3">
-            <label className="form-label">Select Language:</label>
-            <select
-              className="form-select w-50 mx-auto"
-              value={formData.language || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, language: e.target.value || null }))
-              }
-            >
-              <option value="auto">Auto Detect</option>
-              {languages
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
-            </select>
-          </div>
 
-        </div>
-        <div className="col-md-4">
-          <div className="mb-3">
-            <label className="form-label">Pause Control (milliseconds):</label>
-            <input
-              type="number"
-              className="form-control w-50 mx-auto"
-              value={formData.silenceDuration || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null, userSetDuration: Number(e.target.value) || null }))
-              }
-              min="0"
-            />
+      {room && room.role == 'owner' && (<>
+        <div className="row">
+          <div className="col-md-4">
+            <div className="mb-3">
+              <label className="form-label">Select Language:</label>
+              <select
+                className="form-select w-50 mx-auto"
+                value={formData.language || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, language: e.target.value || null }))
+                }
+              >
+                <option value="auto">Auto Detect</option>
+                {languages
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
           </div>
-        </div>
-        <div className="col-md-4">
-          <div className="mb-3">
-            <label className="form-label">Chunks Control (milliseconds):</label>
-            <input
-              type="number"
-              className="form-control w-50 mx-auto"
-              value={formData.chunksDuration || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, chunksDuration: Number(e.target.value) || null }))
-              }
-              min="0"
-            />
+          <div className="col-md-4">
+            <div className="mb-3">
+              <label className="form-label">Pause Control (milliseconds):</label>
+              <input
+                type="number"
+                className="form-control w-50 mx-auto"
+                value={formData.silenceDuration || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null, userSetDuration: Number(e.target.value) || null }))
+                }
+                min="0"
+              />
+
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="mb-3">
+              <label className="form-label">Chunks Control (milliseconds):</label>
+              <input
+                type="number"
+                className="form-control w-50 mx-auto"
+                value={formData.chunksDuration || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, chunksDuration: Number(e.target.value) || null }))
+                }
+                min="0"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
 
-      <div className="my-4">
-        <button
-          className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg`}
-          onClick={isRecording ? handleStopRecording : handleStartRecording}
-        >
-          {isRecording ? 'Stop Recording' : 'Start Recording'}
-        </button>
-      </div>
+        <div className="my-4">
+          <button
+            className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg`}
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+          >
+            {isRecording ? 'Stop Recording' : 'Start Recording'}
+          </button>
+        </div>
+
+
+      </>)}
 
 
 
@@ -665,25 +859,27 @@ const SpeechToText = () => {
             <h4>Transcriptions:</h4>
           </div>
 
-          {/* Right Column: Translate Language Dropdown */}
-          <div className="col-md-6 text-md-end">
-            <label className="form-label d-block">Translate Language:</label>
-            <select
-              className="form-select w-50 d-inline-block"
-              value={formData.translateLanguage || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
-              }
-            >
-              {languages
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
-            </select>
-          </div>
+          {room && room.role == 'owner' && (<>
+            {/* Right Column: Translate Language Dropdown */}
+            <div className="col-md-6 text-md-end">
+              <label className="form-label d-block">Translate Language:</label>
+              <select
+                className="form-select w-50 d-inline-block"
+                value={formData.translateLanguage || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
+                }
+              >
+                {languages
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+              </select>
+            </div></>)}
+
         </div>
 
 
