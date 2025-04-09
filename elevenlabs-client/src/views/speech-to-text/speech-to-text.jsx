@@ -594,6 +594,50 @@ const SpeechToText = () => {
             </select>
           </div>
         </div>
+
+        <div className='row'>
+          <div className="col-md-6 mb-2">
+            <div className='card h-100'>
+              <div className='card-body'>
+                {[...transcriptions]
+                  .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                  .map((transcription, idx) => (
+                    <p key={`transcription-${idx}`}>
+                      {transcription.status === 'processing' ? (
+                        'Processing...'
+                      ) : (
+                        <>
+                          {cleanHtml(transcription?.text || transcription?.error)}
+                          {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                        </>
+                      )}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          </div>
+          <div className="col-md-6 mb-2">
+            <div className='card  h-100'>
+              <div className='card-body'>
+                {[...transcriptions]
+                  .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                  .map((transcription, idx) => (
+                    <p key={`transcription-${idx}`}>
+                      {transcription?.translate?.status === 'processing' ? (
+                        'Processing...'
+                      ) : (
+                        <>
+                          {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
+                          {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                        </>
+                      )}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <h6>Debug</h6>
         <ul className="list-group">
           {[...transcriptions]
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((transcription, idx) => (
