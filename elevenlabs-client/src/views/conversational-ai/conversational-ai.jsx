@@ -40,7 +40,35 @@ const ConversationalAI = () => {
       // Start the conversation with your agent
       console.log("calling startSession");
       await conversation.startSession({
-        agentId: "orQpg0d8k3qnIealQBEw"
+        agentId: "I8mXypBLVapN4STt22PD",//orQpg0d8k3qnIealQBEw
+        dynamicVariables: {
+          user_id: 2          
+        },
+        clientTools: {
+          log_message: async (parameters) => {
+            const { message } = parameters;
+            console.log('tool log_message', parameters);
+            return 'Message logged successfully';
+          },
+          fetch_documentation: async (parameters) => {
+            const { query } = parameters;
+            console.log('tool fetch_documentation', parameters)
+            // Example API call to search documentation
+            const response = await fetch(
+              `https://api.elevenlabs.io/docs/search?q=${encodeURIComponent(query)}`
+            );
+            const data = await response.json();
+
+            return data.results.length
+              ? `Here’s what I found: ${data.results[0].title} - ${data.results[0].url}`
+              : "I couldn't find anything specific, but you can browse our docs at elevenlabs.io/docs.";
+          },
+          send_message: async (parameters) => {
+            const { email, message } = parameters;
+            console.log('tool send_message', parameters);
+            return 'Message sent successfully';
+          },
+        },
       });
     } catch (error) {
       console.error("Failed to start conversation:", error);
