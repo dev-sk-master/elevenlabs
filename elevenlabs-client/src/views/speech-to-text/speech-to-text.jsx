@@ -238,6 +238,7 @@ const SpeechToText = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setIsRecording(true);
+      setCombinedAudio(null); // Clear combined audio when starting new recording
       setupAudioAnalysis(stream);
     } catch (error) {
       console.error('Microphone access error:', error);
@@ -261,6 +262,42 @@ const SpeechToText = () => {
     clearTimeout(silenceTimerRef.current);
     clearInterval(chunksTimerRef.current);
     setIsRecording(false);
+    combineAudioChunks();
+  };
+
+  // Generate combined audio when stopping recording
+  const combineAudioChunks = async () => {
+    let transcriptions = transcriptionsRef.current;
+    //if (transcriptions.length === 0) return;
+
+    try {
+      // Get all audio chunks from transcriptions in chronological order
+      const sortedTranscriptions = [...transcriptions].sort(
+        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+      );
+
+      // Get the mimeType from the first valid transcription
+      const mimeType = sortedTranscriptions[0]?.audio?.mimeType;
+
+      // Filter out any transcriptions that don't have chunks yet
+      const validTranscriptions = sortedTranscriptions.filter(t => t.audio?.chunks?.length > 0);
+
+      if (validTranscriptions.length === 0) return;
+
+      // Create a new blob from all chunks in order
+      const allChunks = validTranscriptions.flatMap(t => t.audio.chunks);
+
+      // Create a new blob with all chunks combined
+      const combinedBlob = new Blob(allChunks, { type: mimeType });
+
+      // Create new URL
+      const newUrl = URL.createObjectURL(combinedBlob);
+
+      // Set new URL
+      setCombinedAudio({ url: newUrl, mimeType });
+    } catch (error) {
+      console.error('Error combining audio chunks:', error);
+    }
   };
 
   const setupAudioAnalysis = (stream) => {
@@ -430,14 +467,14 @@ const SpeechToText = () => {
     } catch (error) {
       console.error('Transcription error:', error);
 
-//       setTranscriptions(prev =>
-//         prev.map(item => (item.uuid === uuid ? {
-//           ...item, text: `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+      //       setTranscriptions(prev =>
+      //         prev.map(item => (item.uuid === uuid ? {
+      //           ...item, text: `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
 
-// `, status: 'completed'
-//         } : item))
-//       );
-//       return;
+      // `, status: 'completed'
+      //         } : item))
+      //       );
+      //       return;
       //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
       // Step 2 (Error Case): Update transcription with error message
       setTranscriptions(prev =>
@@ -508,43 +545,49 @@ const SpeechToText = () => {
 
 
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
-  const [combinedAudioUrl, setCombinedAudioUrl] = useState(null);
+  const [combinedAudio, setCombinedAudio] = useState(null);
 
-  useEffect(() => {
-    const combineAudioChunks = async () => {
-      if (transcriptions.length === 0) return;
+  // useEffect(() => {
+  //   const combineAudioChunks = async () => {
+  //     if (transcriptions.length === 0) return;
 
-      try {
-        // Get all audio chunks from transcriptions
-        const audioChunks = transcriptions
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-          .filter(t => t.audio?.chunks && t.audio.chunks.length > 0)
-          .map(t => t.audio.chunks);
+  //     try {
+  //       // Get all audio chunks from transcriptions in chronological order
+  //       const sortedTranscriptions = [...transcriptions].sort(
+  //         (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  //       );
 
-        if (audioChunks.length === 0) return;
+  //       // Get the mimeType from the first valid transcription
+  //       const mimeType = sortedTranscriptions[0]?.audio?.mimeType;
 
-        // Flatten the array of chunks
-        const flattenedChunks = audioChunks.flat();
-        
-        // Get the mimeType from the first chunk
-        const mimeType = transcriptions[0]?.audio?.mimeType || 'audio/webm';
+  //       // Filter out any transcriptions that don't have chunks yet
+  //       const validTranscriptions = sortedTranscriptions.filter(t => t.audio?.chunks?.length > 0);
 
-        // Create a new blob from all chunks
-        const combinedBlob = new Blob(flattenedChunks, { type: mimeType });
-        const url = URL.createObjectURL(combinedBlob);
-        setCombinedAudioUrl(url);
+  //       if (validTranscriptions.length === 0) return;
 
-        // Cleanup function
-        return () => {
-          if (url) URL.revokeObjectURL(url);
-        };
-      } catch (error) {
-        console.error('Error combining audio chunks:', error);
-      }
-    };
+  //       // Create a new blob from all chunks in order
+  //       const allChunks = validTranscriptions.flatMap(t => t.audio.chunks);
 
-    combineAudioChunks();
-  }, [transcriptions]);
+  //       // Create a new blob with all chunks combined
+  //       const combinedBlob = new Blob(allChunks, { type: mimeType });
+
+  //       // Create new URL
+  //       const newUrl = URL.createObjectURL(combinedBlob);
+
+  //       // Only revoke old URL after new one is created
+  //       // if (combinedAudio) {
+  //       //   URL.revokeObjectURL(combinedAudioUrl);
+  //       // }
+
+  //       // Set new URL
+  //       setCombinedAudio({ url: newUrl, mimeType });
+  //     } catch (error) {
+  //       console.error('Error combining audio chunks:', error);
+  //     }
+  //   };
+
+  //   combineAudioChunks();
+  // }, [transcriptions]);
 
   const handleMouseEnter = (index) => {
     setHoveredIndex(index);
@@ -685,12 +728,12 @@ const SpeechToText = () => {
           </div>
         </div>
 
-       
-        {listTranscriptions.length > 0 && combinedAudioUrl && (
+
+        {listTranscriptions.length > 0 && combinedAudio && (
           <div className="mb-4">
-            <h6>Full Recording:</h6>
-            <audio controls className="w-100">
-              <source src={combinedAudioUrl} type="audio/webm" />
+            <h6>Full Audio</h6>
+            <audio controls className="w-100" key={combinedAudio?.url}>
+              <source src={combinedAudio?.url} />
               Your browser does not support the audio element.
             </audio>
           </div>
