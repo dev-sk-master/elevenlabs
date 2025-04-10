@@ -421,6 +421,8 @@ const SpeechToText = () => {
   };
 
   // Generate combined audio when stopping recording
+  const [combinedAudio, setCombinedAudio] = useState(null);
+
   const combineAudioChunks = async () => {
     let transcriptions = transcriptionsRef.current;
     //if (transcriptions.length === 0) return;
@@ -445,26 +447,44 @@ const SpeechToText = () => {
       // Create a new blob with all chunks combined
       const combinedBlob = new Blob(allChunks, { type: mimeType });
 
-      // Create new URL
-      const newUrl = URL.createObjectURL(combinedBlob);
-
-      // Set new URL
-      setCombinedAudio({ url: newUrl, mimeType });
+      // Store the blob and create URL
+      const url = URL.createObjectURL(combinedBlob);
+      setCombinedAudio({ blob: combinedBlob, url, mimeType });
     } catch (error) {
       console.error('Error combining audio chunks:', error);
     }
   };
 
+  // Clean up URL when component unmounts or when new audio is created
+  useEffect(() => {
+    return () => {
+      if (combinedAudio?.url) {
+        URL.revokeObjectURL(combinedAudio.url);
+      }
+    };
+  }, [combinedAudio]);
+
   const setupAudioAnalysis = (stream) => {
-    // Set up Web Audio API for volume analysis
-    audioContextRef.current = new AudioContext();
-    const source = audioContextRef.current.createMediaStreamSource(stream);
+    try {
+      // Create AudioContext after user interaction
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
 
-    analyserRef.current = audioContextRef.current.createAnalyser();
-    analyserRef.current.fftSize = 2048;
-    source.connect(analyserRef.current);
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
+      source.connect(analyserRef.current);
 
-    detectSilence();
+      // Resume audio context if it was suspended
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+
+      detectSilence();
+    } catch (error) {
+      console.error('Error setting up audio analysis:', error);
+    }
   };
 
 
@@ -538,10 +558,29 @@ const SpeechToText = () => {
     recordingRef.current = { uuid, timestamp };
     // Initialize fresh recorder for each speech segment
     audioChunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(streamRef.current, {
-      //mimeType: 'audio/webm; codecs=opus'      
-    });
 
+    // Try different MIME types in order of preference
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/mpeg'
+    ];
+
+    let mediaRecorder;
+    for (const mimeType of mimeTypes) {
+      try {
+        mediaRecorder = new MediaRecorder(streamRef.current, { mimeType });
+        break;
+      } catch (e) {
+        console.warn(`MIME type ${mimeType} not supported, trying next...`);
+      }
+    }
+
+    if (!mediaRecorder) {
+      console.error('No supported MIME type found for MediaRecorder');
+      return;
+    }
 
     mediaRecorderRef.current = mediaRecorder;
 
@@ -623,7 +662,7 @@ const SpeechToText = () => {
       }
     } catch (error) {
       console.error('Transcription error:', error);
-     
+
       //setTranscriptions(prev => [...prev, { error: error.message, audio: { url: audioUrl, mimeType } }]);
       // Step 2 (Error Case): Update transcription with error message
       setTranscriptions(prev =>
@@ -694,7 +733,6 @@ const SpeechToText = () => {
 
 
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
-  const [combinedAudio, setCombinedAudio] = useState(null);
 
   const handleMouseEnter = (index) => {
     setHoveredIndex(index);
@@ -920,10 +958,23 @@ const SpeechToText = () => {
         {listTranscriptions.length > 0 && combinedAudio && (
           <div className="mb-4">
             <h6>Full Audio</h6>
-            <audio controls className="w-100" key={combinedAudio?.url}>
-              <source src={combinedAudio?.url} />
+            <audio
+              controls
+              className="w-100"
+              preload="metadata"
+              playsInline
+              webkit-playsinline="true"
+              x5-playsinline="true"
+              x5-video-player-type="h5"
+              x5-video-player-fullscreen="true"
+              key={combinedAudio?.url}
+            >
+              <source src={combinedAudio?.url} type={combinedAudio.mimeType} />
+              <source src={combinedAudio?.url} type="audio/mpeg" />
+              <source src={combinedAudio?.url} type="audio/wav" />
               Your browser does not support the audio element.
             </audio>
+
           </div>
         )}
 
@@ -981,8 +1032,8 @@ const SpeechToText = () => {
                         <i class="bi bi-arrow-down"></i>
                       </button>
                     ) : scrollRef.current?.scrollTop > 0 && (
-                    <>
-                      {/* // <button
+                      <>
+                        {/* // <button
                       //   className="btn btn-primary shadow-sm"
                       //   onClick={scrollToTop}
                       //   title="Scroll to top"
@@ -1029,8 +1080,19 @@ const SpeechToText = () => {
                                 {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                                 {transcription?.audio?.url && hoveredIndex === idx && (
                                   <div className="mt-2">
-                                    <audio controls className="w-100">
+                                    <audio
+                                      controls
+                                      className="w-100"
+                                      preload="metadata"
+                                      playsInline
+                                      webkit-playsinline="true"
+                                      x5-playsinline="true"
+                                      x5-video-player-type="h5"
+                                      x5-video-player-fullscreen="true"
+                                    >
                                       <source src={transcription.audio.url} type={transcription.audio.mimeType} />
+                                      <source src={transcription.audio.url} type="audio/mpeg" />
+                                      <source src={transcription.audio.url} type="audio/wav" />
                                       Your browser does not support the audio element.
                                     </audio>
                                   </div>
