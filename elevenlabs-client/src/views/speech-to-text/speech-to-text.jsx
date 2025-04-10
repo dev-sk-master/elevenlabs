@@ -420,6 +420,7 @@ const SpeechToText = () => {
     clearTimeout(silenceTimerRef.current);
     clearInterval(chunksTimerRef.current);
     setIsRecording(false);
+    new Promise(resolve => setTimeout(resolve, 5000));
     combineAudioChunks();
   };
 
@@ -428,7 +429,6 @@ const SpeechToText = () => {
 
   const combineAudioChunks = async () => {
     let transcriptions = transcriptionsRef.current;
-    //if (transcriptions.length === 0) return;
 
     try {
       // Get all audio chunks from transcriptions in chronological order
@@ -449,10 +449,10 @@ const SpeechToText = () => {
 
       // Create a new blob with all chunks combined
       const combinedBlob = new Blob(allChunks, { type: mimeType });
+      const audioUrl = URL.createObjectURL(combinedBlob);
 
       // Store the blob and create URL
-      //const url = URL.createObjectURL(combinedBlob);
-      setCombinedAudio({ blob: combinedBlob, chunks: allChunks, /*url,*/ mimeType });
+      setCombinedAudio({ blob: combinedBlob, chunks: allChunks, url: audioUrl, mimeType });
     } catch (error) {
       console.error('Error combining audio chunks:', error);
     }
@@ -820,8 +820,6 @@ const SpeechToText = () => {
     }
 
     // 2. Add common fallbacks - browsers might try these
-    //    even if the container type doesn't strictly match the blob's internal format,
-    //    especially if the codec (like Opus) is supported.
     const fallbackTypes = [
       'audio/webm', // General WebM
       'audio/ogg',  // Ogg container, often used with Opus/Vorbis
@@ -830,7 +828,6 @@ const SpeechToText = () => {
     ];
 
     fallbackTypes.forEach(type => {
-      // Avoid adding duplicates if the original mimeType was one of these
       if (type !== audioData.mimeType) {
         sources.push(<source key={type} src={audioData.url} type={type} />);
       }
@@ -839,6 +836,24 @@ const SpeechToText = () => {
     return sources;
   };
 
+  // Helper function to create audio URL from chunks
+  const createAudioUrl = (chunks, mimeType) => {
+    if (!chunks || !chunks.length) return null;
+    const blob = new Blob(chunks, { type: mimeType });
+    return URL.createObjectURL(blob);
+  };
+
+  // Clean up individual audio URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up any individual audio URLs
+      transcriptions.forEach(t => {
+        if (t.audio?.url) {
+          URL.revokeObjectURL(t.audio.url);
+        }
+      });
+    };
+  }, [transcriptions]);
 
   if (!room) {
     return (
@@ -1002,14 +1017,10 @@ const SpeechToText = () => {
               x5-playsinline="true"
               x5-video-player-type="h5"
               x5-video-player-fullscreen="true"
-            //key={combinedAudio?.url}
+              key={combinedAudio.url}
             >
-              {/* <source src={combinedAudio?.url} type={combinedAudio.mimeType} /> */}
-              {(() => {
-                const audioBlob = new Blob(combinedAudio.chunks, { type: combinedAudio.mimeType });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                return renderAudioSources({ url: audioUrl, mimeType: combinedAudio.mimeType });
-              })()}
+              <source src={combinedAudio.url} type={combinedAudio.mimeType} />
+              {renderAudioSources({ url: combinedAudio.url, mimeType: combinedAudio.mimeType })}
               Your browser does not support the audio element.
             </audio>
 
@@ -1049,7 +1060,7 @@ const SpeechToText = () => {
                 className='card-body overflow-auto position-relative'
                 ref={scrollRef}
                 onScroll={handleScroll}
-                style={{ maxHeight: '400px' }} // You can adjust this max height
+                style={{ maxHeight: '400px' }}
               >
                 {/* Floating scroll buttons */}
                 {showScrollButtons && (
@@ -1071,13 +1082,6 @@ const SpeechToText = () => {
                       </button>
                     ) : scrollRef.current?.scrollTop > 0 && (
                       <>
-                        {/* // <button
-                      //   className="btn btn-primary shadow-sm"
-                      //   onClick={scrollToTop}
-                      //   title="Scroll to top"
-                      // >
-                      //   Scroll to top
-                      // </button> */}
                       </>
                     )}
                   </div>
@@ -1085,63 +1089,60 @@ const SpeechToText = () => {
                 <div className='row'>
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
-
-                      {listTranscriptions
-                        .map((transcription, idx) => (
-                          <div
-                            key={`transcription-${idx}`}
-                            onMouseEnter={() => handleMouseEnter(idx)}
-                            onMouseLeave={handleMouseLeave}
-                            className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
-                          >
-                            {transcription.status === 'processing' ? (
-                              'Processing...'
-                            ) : (
-                              <>
-                                <div
-                                  contenteditable={room.role == 'owner' && !transcription?.error ? "true" : "false"}
-                                  onBlur={(e) => {
-                                    if (room.role === 'owner' && !transcription?.error) {
-                                      const newText = e.target.textContent;
-                                      setTranscriptions(prev =>
-                                        prev.map(item =>
-                                          item.uuid === transcription.uuid
-                                            ? { ...item, text: newText }
-                                            : item
-                                        )
-                                      );
-                                    }
-                                  }}
-                                >
-                                  {cleanHtml(transcription?.text || transcription?.error)}
+                      {listTranscriptions.map((transcription, idx) => (
+                        <div
+                          key={`transcription-${idx}`}
+                          onMouseEnter={() => handleMouseEnter(idx)}
+                          onMouseLeave={handleMouseLeave}
+                          className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
+                        >
+                          {transcription.status === 'processing' ? (
+                            'Processing...'
+                          ) : (
+                            <>
+                              <div
+                                contenteditable={room.role == 'owner' && !transcription?.error ? "true" : "false"}
+                                onBlur={(e) => {
+                                  if (room.role === 'owner' && !transcription?.error) {
+                                    const newText = e.target.textContent;
+                                    setTranscriptions(prev =>
+                                      prev.map(item =>
+                                        item.uuid === transcription.uuid
+                                          ? { ...item, text: newText }
+                                          : item
+                                      )
+                                    );
+                                  }
+                                }}
+                              >
+                                {cleanHtml(transcription?.text || transcription?.error)}
+                              </div>
+                              {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                              {transcription?.audio?.chunks && hoveredIndex === idx && (
+                                <div className="mt-2">
+                                  <audio
+                                    controls
+                                    className="w-100"
+                                    preload="metadata"
+                                    playsInline
+                                    webkit-playsinline="true"
+                                    x5-playsinline="true"
+                                    x5-video-player-type="h5"
+                                    x5-video-player-fullscreen="true"
+                                    key={transcription.uuid}
+                                  >
+                                    {(() => {
+                                      const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
+                                      return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
+                                    })()}
+                                    Your browser does not support the audio element.
+                                  </audio>
                                 </div>
-                                {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
-                                {transcription?.audio?.chunks && hoveredIndex === idx && (
-                                  <div className="mt-2">
-                                    <audio
-                                      controls
-                                      className="w-100"
-                                      preload="metadata"
-                                      playsInline
-                                      webkit-playsinline="true"
-                                      x5-playsinline="true"
-                                      x5-video-player-type="h5"
-                                      x5-video-player-fullscreen="true"
-                                    >
-                                      {(() => {
-                                        const audioBlob = new Blob(transcription.audio.chunks, { type: transcription.audio.mimeType });
-                                        const audioUrl = URL.createObjectURL(audioBlob);
-                                        return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
-                                      })()}
-                                      Your browser does not support the audio element.
-                                    </audio>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
 
