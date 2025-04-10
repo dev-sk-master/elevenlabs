@@ -953,14 +953,14 @@ const SpeechToText = () => {
               >
                 {/* Floating scroll buttons */}
                 {showScrollButtons && (
-                  <div className="position-sticky d-flex flex-column gap-2" 
-                       style={{ 
-                         top: '50%', 
-                         transform: 'translateY(-50%)',
-                         right: '20px',
-                         float: 'right',
-                         zIndex: 1000
-                       }}>
+                  <div className="position-sticky d-flex flex-column gap-2"
+                    style={{
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      right: '20px',
+                      float: 'right',
+                      zIndex: 1000
+                    }}>
                     {scrollRef.current && scrollRef.current.scrollTop + scrollRef.current.clientHeight < scrollRef.current.scrollHeight - 10 ? (
                       <button
                         className="btn btn-primary shadow-sm"
@@ -996,7 +996,23 @@ const SpeechToText = () => {
                               'Processing...'
                             ) : (
                               <>
-                                {cleanHtml(transcription?.text || transcription?.error)}
+                                <div
+                                  contenteditable={room.role == 'owner' && !transcription?.error ? "true" : "false"}
+                                  onBlur={(e) => {
+                                    if (room.role === 'owner' && !transcription?.error) {
+                                      const newText = e.target.textContent;
+                                      setTranscriptions(prev =>
+                                        prev.map(item =>
+                                          item.uuid === transcription.uuid
+                                            ? { ...item, text: newText }
+                                            : item
+                                        )
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {cleanHtml(transcription?.text || transcription?.error)}
+                                </div>
                                 {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                                 {transcription?.audio?.url && hoveredIndex === idx && (
                                   <div className="mt-2">
@@ -1029,7 +1045,23 @@ const SpeechToText = () => {
                               'Processing...'
                             ) : (
                               <>
-                                {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
+                                <div
+                                  contenteditable={room.role == 'owner' && !transcription?.translate?.error ? "true" : "false"}
+                                  onBlur={(e) => {
+                                    if (room.role === 'owner' && !transcription?.translate?.error) {
+                                      const newText = e.target.textContent;
+                                      setTranscriptions(prev =>
+                                        prev.map(item =>
+                                          item.uuid === transcription.uuid
+                                            ? { ...item, translate: { ...item.translate, text: newText } }
+                                            : item
+                                        )
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
+                                </div>
                                 {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                               </>
                             )}
