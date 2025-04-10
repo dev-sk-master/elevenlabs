@@ -1027,11 +1027,18 @@ const SpeechToText = () => {
             {(() => {
               const audioUrl = createAudioUrl(combinedAudio.chunks, combinedAudio.mimeType);
               return <ReactAudioPlayer
+                key={combinedAudio.key}
                 src={audioUrl}
-                controls
+                controls                
+                onEnded={() => {
+                  setCombinedAudio(prev => ({
+                    ...prev,
+                    key: `${Date.now()}-${prev.key.split('-')[1]}`
+                  }));
+                }}
               />;
             })()}
- 
+
 
             {/* <audio
               controls
