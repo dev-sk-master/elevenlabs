@@ -209,6 +209,23 @@ const SpeechToText = () => {
   const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en", userSetDuration: 1000 })
   const formDataRef = useRef(formData);
 
+  // Load formData from sessionStorage on component mount
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('speechToTextFormData');
+    if (savedFormData) {
+      const parsedData = JSON.parse(savedFormData);
+      setFormData(parsedData);
+      formDataRef.current = parsedData;
+    }
+  }, []);
+
+  // Save formData to sessionStorage whenever it changes
+  useEffect(() => {
+    console.log('formData', formData)
+    formDataRef.current = formData;
+    sessionStorage.setItem('speechToTextFormData', JSON.stringify(formData));
+  }, [formData]);
+
   // Keep languageRef updated
   useEffect(() => {
     console.log('formData', formData)
