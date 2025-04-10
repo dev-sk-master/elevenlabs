@@ -7,6 +7,9 @@ import { isMobile } from 'react-device-detect';
 import { io } from 'socket.io-client';
 import isEqual from 'lodash/isEqual'; // npm install lodash
 import usePrevious from '../../hooks/usePrevious';
+import { useMemo } from 'react';
+import ReactAudioPlayer from 'react-audio-player';
+
 
 
 // Socket connection and room management
@@ -420,8 +423,10 @@ const SpeechToText = () => {
     clearTimeout(silenceTimerRef.current);
     clearInterval(chunksTimerRef.current);
     setIsRecording(false);
-    new Promise(resolve => setTimeout(resolve, 5000));
-    combineAudioChunks();
+    setTimeout(() => {
+      combineAudioChunks();
+    }, 2000); // Short delay
+
   };
 
   // Generate combined audio when stopping recording
@@ -446,13 +451,24 @@ const SpeechToText = () => {
 
       // Create a new blob from all chunks in order
       const allChunks = validTranscriptions.flatMap(t => t.audio.chunks);
+      console.log('allChunks', allChunks)
 
       // Create a new blob with all chunks combined
       const combinedBlob = new Blob(allChunks, { type: mimeType });
-      const audioUrl = URL.createObjectURL(combinedBlob);
+
+      // Convert Blob to ArrayBuffer for hashing
+      const arrayBuffer = await combinedBlob.arrayBuffer();
+
+      // Generate a unique key based on chunks and timestamp
+      const chunksHash = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const chunksHashHex = Array.from(new Uint8Array(chunksHash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      const timestamp = new Date().getTime();
+      const uniqueKey = `${timestamp}-${chunksHashHex}`;
 
       // Store the blob and create URL
-      setCombinedAudio({ blob: combinedBlob, chunks: allChunks, url: audioUrl, mimeType });
+      setCombinedAudio({ blob: combinedBlob, chunks: allChunks, mimeType, key: uniqueKey });
     } catch (error) {
       console.error('Error combining audio chunks:', error);
     }
@@ -1008,7 +1024,16 @@ const SpeechToText = () => {
         {listTranscriptions.length > 0 && combinedAudio && (
           <div className="mb-4">
             <h6>Full Audio</h6>
-            <audio
+            {(() => {
+              const audioUrl = createAudioUrl(combinedAudio.chunks, combinedAudio.mimeType);
+              return <ReactAudioPlayer
+                src={audioUrl}
+                controls
+              />;
+            })()}
+ 
+
+            {/* <audio
               controls
               className="w-100"
               preload="metadata"
@@ -1017,12 +1042,15 @@ const SpeechToText = () => {
               x5-playsinline="true"
               x5-video-player-type="h5"
               x5-video-player-fullscreen="true"
-              key={combinedAudio.url}
+              key={combinedAudio.key}
             >
-              <source src={combinedAudio.url} type={combinedAudio.mimeType} />
-              {renderAudioSources({ url: combinedAudio.url, mimeType: combinedAudio.mimeType })}
+
+              {(() => {
+                const audioUrl = createAudioUrl(combinedAudio.chunks, combinedAudio.mimeType);
+                return renderAudioSources({ url: audioUrl, mimeType: combinedAudio.mimeType });
+              })()}
               Your browser does not support the audio element.
-            </audio>
+            </audio> */}
 
           </div>
         )}
@@ -1120,7 +1148,14 @@ const SpeechToText = () => {
                               {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                               {transcription?.audio?.chunks && hoveredIndex === idx && (
                                 <div className="mt-2">
-                                  <audio
+                                  {(() => {
+                                    const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
+                                    return <ReactAudioPlayer
+                                      src={audioUrl}
+                                      controls
+                                    />;
+                                  })()}
+                                  {/* <audio
                                     controls
                                     className="w-100"
                                     preload="metadata"
@@ -1136,7 +1171,7 @@ const SpeechToText = () => {
                                       return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
                                     })()}
                                     Your browser does not support the audio element.
-                                  </audio>
+                                  </audio> */}
                                 </div>
                               )}
                             </>
