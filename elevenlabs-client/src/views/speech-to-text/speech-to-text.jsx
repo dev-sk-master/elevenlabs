@@ -949,28 +949,30 @@ const SpeechToText = () => {
                 {showScrollButtons && (
                   <div className="position-sticky d-flex flex-column gap-2"
                     style={{
-                      top: '50%',
+                      top: '90%',
                       transform: 'translateY(-50%)',
-                      right: '20px',
+                      right: '5px',
                       float: 'right',
                       zIndex: 1000
                     }}>
                     {scrollRef.current && scrollRef.current.scrollTop + scrollRef.current.clientHeight < scrollRef.current.scrollHeight - 10 ? (
                       <button
-                        className="btn btn-primary shadow-sm"
+                        className="btn btn-sm btn-link rounded-pill shadow-sm"
                         onClick={scrollToBottom}
                         title="Scroll to bottom"
                       >
-                        Scroll to bottom
+                        <i class="bi bi-arrow-down"></i>
                       </button>
                     ) : scrollRef.current?.scrollTop > 0 && (
-                      <button
-                        className="btn btn-primary shadow-sm"
-                        onClick={scrollToTop}
-                        title="Scroll to top"
-                      >
-                        Scroll to top
-                      </button>
+                    <>
+                      {/* // <button
+                      //   className="btn btn-primary shadow-sm"
+                      //   onClick={scrollToTop}
+                      //   title="Scroll to top"
+                      // >
+                      //   Scroll to top
+                      // </button> */}
+                      </>
                     )}
                   </div>
                 )}
