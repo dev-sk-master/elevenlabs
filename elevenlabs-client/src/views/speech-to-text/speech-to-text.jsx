@@ -11,7 +11,7 @@ import usePrevious from '../../hooks/usePrevious';
 
 // Socket connection and room management
 const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, {
-  //transports: ["websocket"], // force WebSocket (optional)
+  ///transports: ["websocket"], // force WebSocket (optional)
   //withCredentials: true,     // if your server requires it
 });
 //const roomId = uuidv4(); // Generate a unique room ID on page load
@@ -701,12 +701,28 @@ const SpeechToText = () => {
 
   const scrollRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // Tolerance for pixel rounding
     setAutoScroll(isAtBottom);
+    setShowScrollButtons(scrollHeight > clientHeight); // Show buttons only if content is scrollable
+  };
+
+  const scrollToTop = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+      setAutoScroll(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setAutoScroll(true);
+    }
   };
 
   useEffect(() => {
@@ -928,14 +944,42 @@ const SpeechToText = () => {
                 </div>
               </div>
             )}
-            <div className='card h-100'>
+            <div className='card h-100 mb-5'>
               <div
-                className='card-body overflow-auto'
+                className='card-body overflow-auto position-relative'
                 ref={scrollRef}
                 onScroll={handleScroll}
                 style={{ maxHeight: '400px' }} // You can adjust this max height
-
               >
+                {/* Floating scroll buttons */}
+                {showScrollButtons && (
+                  <div className="position-sticky d-flex flex-column gap-2" 
+                       style={{ 
+                         top: '50%', 
+                         transform: 'translateY(-50%)',
+                         right: '20px',
+                         float: 'right',
+                         zIndex: 1000
+                       }}>
+                    {scrollRef.current && scrollRef.current.scrollTop + scrollRef.current.clientHeight < scrollRef.current.scrollHeight - 10 ? (
+                      <button
+                        className="btn btn-primary shadow-sm"
+                        onClick={scrollToBottom}
+                        title="Scroll to bottom"
+                      >
+                        Scroll to bottom
+                      </button>
+                    ) : scrollRef.current?.scrollTop > 0 && (
+                      <button
+                        className="btn btn-primary shadow-sm"
+                        onClick={scrollToTop}
+                        title="Scroll to top"
+                      >
+                        Scroll to top
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className='row'>
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
