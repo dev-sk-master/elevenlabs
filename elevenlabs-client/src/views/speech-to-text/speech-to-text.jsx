@@ -335,6 +335,9 @@ const SpeechToText = () => {
     console.log('transcriptions', transcriptions)
     transcriptionsRef.current = transcriptions;
 
+
+
+    if (room && room.role != 'owner') return;
     console.log('previous', prevTranscriptions)
     //avoid reset case
     if (transcriptions.length == 0 && prevTranscriptions && prevTranscriptions.length > 0) {
@@ -368,7 +371,7 @@ const SpeechToText = () => {
     }
 
 
-  }, [transcriptions]);
+  }, [transcriptions, room]);
 
   // Refs for managing audio resources and state
   const mediaRecorderRef = useRef(null);
@@ -448,21 +451,21 @@ const SpeechToText = () => {
       const combinedBlob = new Blob(allChunks, { type: mimeType });
 
       // Store the blob and create URL
-      const url = URL.createObjectURL(combinedBlob);
-      setCombinedAudio({ blob: combinedBlob, url, mimeType });
+      //const url = URL.createObjectURL(combinedBlob);
+      setCombinedAudio({ blob: combinedBlob, chunks: allChunks, /*url,*/ mimeType });
     } catch (error) {
       console.error('Error combining audio chunks:', error);
     }
   };
 
   // Clean up URL when component unmounts or when new audio is created
-  useEffect(() => {
-    return () => {
-      if (combinedAudio?.url) {
-        URL.revokeObjectURL(combinedAudio.url);
-      }
-    };
-  }, [combinedAudio]);
+  // useEffect(() => {
+  //   return () => {
+  //     if (combinedAudio?.url) {
+  //       URL.revokeObjectURL(combinedAudio.url);
+  //     }
+  //   };
+  // }, [combinedAudio]);
 
   const setupAudioAnalysis = (stream) => {
     try {
@@ -618,7 +621,7 @@ const SpeechToText = () => {
 
   const sendAudioToServer = async (chunks, mimeType) => {
     const audioBlob = new Blob(chunks, { type: mimeType });
-    const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
+    //const audioUrl = URL.createObjectURL(audioBlob); // Create a URL for playback
 
 
     // const uuid = uuidv4(); // Generate a unique ID
@@ -632,8 +635,8 @@ const SpeechToText = () => {
     setTranscriptions(prev => {
       const exists = prev.some(item => item.uuid === uuid);
       return exists
-        ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing', audio: { ...item.audio, url: audioUrl, mimeType, chunks } } : item))
-        : [...prev, { uuid, timestamp, status: 'processing', audio: { url: audioUrl, mimeType, chunks } }];
+        ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing', audio: { ...item.audio, blob: audioBlob, /*url: audioUrl,*/ mimeType, chunks } } : item))
+        : [...prev, { uuid, timestamp, status: 'processing', audio: { blob: audioBlob, /*url: audioUrl,*/ mimeType, chunks } }];
     });
 
 
@@ -804,6 +807,38 @@ const SpeechToText = () => {
     window.location.hash = roomId;
   }
 
+  // Helper function to render audio sources
+  const renderAudioSources = (audioData) => {
+    if (!audioData || !audioData.url) {
+      return null;
+    }
+
+    const sources = [];
+    // 1. Add the original recorded type first (most accurate)
+    if (audioData.mimeType) {
+      sources.push(<source key="original" src={audioData.url} type={audioData.mimeType} />);
+    }
+
+    // 2. Add common fallbacks - browsers might try these
+    //    even if the container type doesn't strictly match the blob's internal format,
+    //    especially if the codec (like Opus) is supported.
+    const fallbackTypes = [
+      'audio/webm', // General WebM
+      'audio/ogg',  // Ogg container, often used with Opus/Vorbis
+      'audio/mp4',  // Might work if browser is lenient with AAC/Opus in MP4
+      'audio/mpeg' // MP3 - less likely to work if source isn't MP3, but harmless to add
+    ];
+
+    fallbackTypes.forEach(type => {
+      // Avoid adding duplicates if the original mimeType was one of these
+      if (type !== audioData.mimeType) {
+        sources.push(<source key={type} src={audioData.url} type={type} />);
+      }
+    });
+
+    return sources;
+  };
+
 
   if (!room) {
     return (
@@ -967,11 +1002,14 @@ const SpeechToText = () => {
               x5-playsinline="true"
               x5-video-player-type="h5"
               x5-video-player-fullscreen="true"
-              key={combinedAudio?.url}
+            //key={combinedAudio?.url}
             >
-              <source src={combinedAudio?.url} type={combinedAudio.mimeType} />
-              <source src={combinedAudio?.url} type="audio/mpeg" />
-              <source src={combinedAudio?.url} type="audio/wav" />
+              {/* <source src={combinedAudio?.url} type={combinedAudio.mimeType} /> */}
+              {(() => {
+                const audioBlob = new Blob(combinedAudio.chunks, { type: combinedAudio.mimeType });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                return renderAudioSources({ url: audioUrl, mimeType: combinedAudio.mimeType });
+              })()}
               Your browser does not support the audio element.
             </audio>
 
@@ -1078,7 +1116,7 @@ const SpeechToText = () => {
                                   {cleanHtml(transcription?.text || transcription?.error)}
                                 </div>
                                 {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
-                                {transcription?.audio?.url && hoveredIndex === idx && (
+                                {transcription?.audio?.chunks && hoveredIndex === idx && (
                                   <div className="mt-2">
                                     <audio
                                       controls
@@ -1090,9 +1128,11 @@ const SpeechToText = () => {
                                       x5-video-player-type="h5"
                                       x5-video-player-fullscreen="true"
                                     >
-                                      <source src={transcription.audio.url} type={transcription.audio.mimeType} />
-                                      <source src={transcription.audio.url} type="audio/mpeg" />
-                                      <source src={transcription.audio.url} type="audio/wav" />
+                                      {(() => {
+                                        const audioBlob = new Blob(transcription.audio.chunks, { type: transcription.audio.mimeType });
+                                        const audioUrl = URL.createObjectURL(audioBlob);
+                                        return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
+                                      })()}
                                       Your browser does not support the audio element.
                                     </audio>
                                   </div>
