@@ -766,11 +766,17 @@ const SpeechToText = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
 
   const handleMouseEnter = (index) => {
-    setHoveredIndex(index);
+    //console.log('handleMouseEnter',index)
+    setTimeout(() => {
+      setHoveredIndex(index);
+    }, 500)
+
   };
 
   const handleMouseLeave = () => {
-    setHoveredIndex(null);
+    setTimeout(() => {
+      setHoveredIndex(null);
+    }, 500)
   };
 
 
@@ -1288,7 +1294,7 @@ const SpeechToText = () => {
                   </div>
                 )}
 
-                
+
                 <div className='row' onMouseLeave={handleMouseLeave}>
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
