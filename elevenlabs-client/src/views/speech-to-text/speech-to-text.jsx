@@ -881,23 +881,28 @@ const SpeechToText = () => {
   return ( /* ... (Rest of the JSX, unchanged from previous version) ... */
     <div className="container-fluid mt-3 mb-5">
       {/* Header Row */}
-      <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light border rounded">
-        <h2 className="m-0">Speech Recorder</h2>
-        {/* DEBUG: Show isRecording State */}
-        {/* <span className={`ms-3 badge ${isRecording ? 'bg-success' : 'bg-danger'}`}>
-                    Recording: {isRecording ? 'ON' : 'OFF'} (Ref: {isRecordingRef.current ? 'T' : 'F'})
-                 </span> */}
-        <div className='d-flex align-items-center'>
-          <span className="badge bg-secondary me-3">Room: {room.roomId} ({room.role})</span>
+
+
+      <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
+        <h2 className="m-0 mb-md-0 w-100 w-md-auto text-start">Speech Recorder</h2>
+        <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
+          <span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">
+            Room: {room.roomId} ({room.role})
+          </span>
           {room.role === 'owner' && (
             <button
               className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
-              onClick={() => setShowSettings(!showSettings)} title="Settings" >
-              <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i> Settings
+              onClick={() => setShowSettings(!showSettings)}
+              title="Settings"
+            >
+              <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
+              {/* Hide text on xs, show on sm and up */}
+              <span className="d-none d-sm-inline ms-1">Settings</span>
             </button>
           )}
         </div>
       </div>
+
 
       {/* Settings Panel (Owner Only) */}
       {room.role === 'owner' && showSettings && (
