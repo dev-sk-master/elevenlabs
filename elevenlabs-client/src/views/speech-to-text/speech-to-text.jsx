@@ -754,11 +754,23 @@ const SpeechToText = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
 
   const handleMouseEnter = (index) => {
+    // Store current scroll position before hover
+    const scrollTop = scrollRef.current?.scrollTop;
     setHoveredIndex(index);
+    // Restore scroll position after state update
+    if (scrollRef.current && scrollTop !== undefined) {
+      scrollRef.current.scrollTop = scrollTop;
+    }
   };
 
   const handleMouseLeave = () => {
+    // Store current scroll position before hover
+    const scrollTop = scrollRef.current?.scrollTop;
     setHoveredIndex(null);
+    // Restore scroll position after state update
+    if (scrollRef.current && scrollTop !== undefined) {
+      scrollRef.current.scrollTop = scrollTop;
+    }
   };
 
 
@@ -1129,11 +1141,11 @@ const SpeechToText = () => {
                           key={`transcription-${idx}`}
                           onMouseEnter={() => handleMouseEnter(idx)}
                           onMouseLeave={handleMouseLeave}
-                          className={`mb-2 position-relative ${hoveredIndex === idx ? 'bg-warning' : ''}`}
+                          className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                           style={{ 
+                            position: 'relative',
                             minHeight: '2rem',
-                            padding: hoveredIndex === idx ? '0.25rem' : '0',
-                            transition: 'padding 0.1s ease-in-out'
+                            overflow: 'hidden'
                           }}
                         >
                           {transcription.status === 'processing' ? (
@@ -1157,14 +1169,16 @@ const SpeechToText = () => {
                                 style={{
                                   minHeight: '1.5rem',
                                   outline: 'none',
-                                  wordBreak: 'break-word'
+                                  wordBreak: 'break-word',
+                                  position: 'relative',
+                                  zIndex: 1
                                 }}
                               >
                                 {cleanHtml(transcription?.text || transcription?.error)}
                               </div>
                               {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                               {transcription?.audio?.chunks && hoveredIndex === idx && (
-                                <div className="mt-2">
+                                <div className="mt-2" style={{ position: 'relative', zIndex: 2 }}>
                                   {(() => {
                                     const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
                                     return <ReactAudioPlayer
@@ -1190,12 +1204,7 @@ const SpeechToText = () => {
                             key={`translation-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
-                            className={`mb-2 position-relative ${hoveredIndex === idx ? 'bg-warning' : ''}`}
-                            style={{ 
-                              minHeight: '2rem',
-                              padding: hoveredIndex === idx ? '0.25rem' : '0',
-                              transition: 'padding 0.1s ease-in-out'
-                            }}
+                            className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                           >
                             {transcription?.translate?.status === 'processing' ? (
                               'Processing...'
@@ -1214,11 +1223,6 @@ const SpeechToText = () => {
                                         )
                                       );
                                     }
-                                  }}
-                                  style={{
-                                    minHeight: '1.5rem',
-                                    outline: 'none',
-                                    wordBreak: 'break-word'
                                   }}
                                 >
                                   {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
