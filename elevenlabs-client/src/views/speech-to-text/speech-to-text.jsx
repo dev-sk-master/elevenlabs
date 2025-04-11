@@ -1065,9 +1065,9 @@ const SpeechToText = () => {
                           </div>
 
                           <div
-                            contentEditable={room.role === 'owner' && item.status !== 'processing' && item.status !== 'reprocessing'}
+                            contentEditable={room.role === 'owner' && item.status == 'completed'}
                             suppressContentEditableWarning={true}
-                            onBlur={(e) => { if (room.role === 'owner') handleTextEdit(item.uuid, 'transcription', e.target.textContent || '') }}
+                            onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.textContent || '') }}
                             className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                             style={{ minHeight: '1.5em' }}
                           >
@@ -1121,7 +1121,7 @@ const SpeechToText = () => {
                           <div
                             contentEditable={room.role === 'owner' && item.translate?.status === 'completed'}
                             suppressContentEditableWarning={true}
-                            onBlur={(e) => { if (room.role === 'owner') handleTextEdit(item.uuid, 'translation', e.target.textContent || '') }}
+                            onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.textContent || '') }}
                             className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                             style={{ minHeight: '1.5em' }}
                           >
