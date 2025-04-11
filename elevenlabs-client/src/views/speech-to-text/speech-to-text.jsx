@@ -1129,7 +1129,12 @@ const SpeechToText = () => {
                           key={`transcription-${idx}`}
                           onMouseEnter={() => handleMouseEnter(idx)}
                           onMouseLeave={handleMouseLeave}
-                          className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
+                          className={`mb-2 position-relative ${hoveredIndex === idx ? 'bg-warning' : ''}`}
+                          style={{ 
+                            minHeight: '2rem',
+                            padding: hoveredIndex === idx ? '0.25rem' : '0',
+                            transition: 'padding 0.1s ease-in-out'
+                          }}
                         >
                           {transcription.status === 'processing' ? (
                             'Processing...'
@@ -1149,6 +1154,11 @@ const SpeechToText = () => {
                                     );
                                   }
                                 }}
+                                style={{
+                                  minHeight: '1.5rem',
+                                  outline: 'none',
+                                  wordBreak: 'break-word'
+                                }}
                               >
                                 {cleanHtml(transcription?.text || transcription?.error)}
                               </div>
@@ -1162,23 +1172,6 @@ const SpeechToText = () => {
                                       controls
                                     />;
                                   })()}
-                                  {/* <audio
-                                    controls
-                                    className="w-100"
-                                    preload="metadata"
-                                    playsInline
-                                    webkit-playsinline="true"
-                                    x5-playsinline="true"
-                                    x5-video-player-type="h5"
-                                    x5-video-player-fullscreen="true"
-                                    key={transcription.uuid}
-                                  >
-                                    {(() => {
-                                      const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
-                                      return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
-                                    })()}
-                                    Your browser does not support the audio element.
-                                  </audio> */}
                                 </div>
                               )}
                             </>
@@ -1197,7 +1190,12 @@ const SpeechToText = () => {
                             key={`translation-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
                             onMouseLeave={handleMouseLeave}
-                            className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
+                            className={`mb-2 position-relative ${hoveredIndex === idx ? 'bg-warning' : ''}`}
+                            style={{ 
+                              minHeight: '2rem',
+                              padding: hoveredIndex === idx ? '0.25rem' : '0',
+                              transition: 'padding 0.1s ease-in-out'
+                            }}
                           >
                             {transcription?.translate?.status === 'processing' ? (
                               'Processing...'
@@ -1216,6 +1214,11 @@ const SpeechToText = () => {
                                         )
                                       );
                                     }
+                                  }}
+                                  style={{
+                                    minHeight: '1.5rem',
+                                    outline: 'none',
+                                    wordBreak: 'break-word'
                                   }}
                                 >
                                   {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
