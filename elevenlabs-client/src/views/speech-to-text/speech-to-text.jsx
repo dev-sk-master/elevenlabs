@@ -209,7 +209,15 @@ const SpeechToText = () => {
   // }, []);
 
   const [room, setRoom] = useState(null);
-  const [formData, setFormData] = useState({ language: "auto", silenceDuration: 1000, chunksDuration: 5000, translateLanguage: "en", userSetDuration: 1000 })
+  const [formData, setFormData] = useState({
+    language: "auto",
+    silenceDuration: 1000,
+    chunksDuration: 5000,
+    translateLanguage: "en",
+    userSetDuration: 1000,
+    moderation: false,
+    disableSharing: false
+  })
   const formDataRef = useRef(formData);
 
   // Load formData from sessionStorage on component mount
@@ -341,6 +349,7 @@ const SpeechToText = () => {
 
 
     if (room && room.role != 'owner') return;
+    if (formDataRef.current.disableSharing) return;
     console.log('previous', prevTranscriptions)
     //avoid reset case
     if (transcriptions.length == 0 && prevTranscriptions && prevTranscriptions.length > 0) {
@@ -352,6 +361,9 @@ const SpeechToText = () => {
       const changedTranscriptions = [];
 
       for (const current of transcriptions) {
+        //skip if not moderated or auto approved
+        if (current.moderation_status != 'approved') continue;
+
         const prev = prevMap.get(current.uuid);
         if (!prev) {
           // New transcription
@@ -652,7 +664,7 @@ const SpeechToText = () => {
       const exists = prev.some(item => item.uuid === uuid);
       return exists
         ? prev.map(item => (item.uuid === uuid ? { ...item, status: 'reprocessing', audio: { ...item.audio, blob: audioBlob, /*url: audioUrl,*/ mimeType, chunks } } : item))
-        : [...prev, { uuid, timestamp, status: 'processing', audio: { blob: audioBlob, /*url: audioUrl,*/ mimeType, chunks } }];
+        : [...prev, { uuid, timestamp, status: 'processing', audio: { blob: audioBlob, /*url: audioUrl,*/ mimeType, chunks }, moderation_status: formDataRef.current.moderation ? 'pending' : 'approved' }];
     });
 
 
@@ -754,23 +766,11 @@ const SpeechToText = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null); // null means nothing is hovered
 
   const handleMouseEnter = (index) => {
-    // Store current scroll position before hover
-    const scrollTop = scrollRef.current?.scrollTop;
     setHoveredIndex(index);
-    // Restore scroll position after state update
-    if (scrollRef.current && scrollTop !== undefined) {
-      scrollRef.current.scrollTop = scrollTop;
-    }
   };
 
   const handleMouseLeave = () => {
-    // Store current scroll position before hover
-    const scrollTop = scrollRef.current?.scrollTop;
-    setHoveredIndex(null);
-    // Restore scroll position after state update
-    if (scrollRef.current && scrollTop !== undefined) {
-      scrollRef.current.scrollTop = scrollTop;
-    }
+    //setHoveredIndex(null);
   };
 
 
@@ -883,42 +883,111 @@ const SpeechToText = () => {
     };
   }, [transcriptions]);
 
+  const [showSettings, setShowSettings] = useState(false);
+
   if (!room) {
     return (
-      <div className="container text-center mt-5">
-        <h2>Create or Join a Room</h2>
-        <div className="row justify-content-center mt-4">
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control mb-3"
-              placeholder="Enter Room ID"
-              value={roomFormData.roomId}
-              onChange={(e) => {
-                setRoomFormData((prev) => ({
-                  ...prev,
-                  roomId: e.target.value,
-                }));
-              }}
-            />
-            <div className="d-grid gap-2">
-              <button
-                className="btn btn-primary"
-                onClick={() => handleJoinRoom()}
-              // disabled={!roomId.trim()}
-              >
-                Join Room
-              </button>
+      <div className="container  mt-5">
+        <div className="row justify-content-center">
+          <div className="col-md-5 mb-5">
+            <div className="card">
+              <div className="card-body">
+                <h4 className="card-title mb-4">Join Room</h4>
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter Room ID"
+                    value={roomFormData.roomId}
+                    onChange={(e) =>
+                      setRoomFormData((prev) => ({
+                        ...prev,
+                        roomId: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <button
+                  className="btn btn-primary w-100"
+                  onClick={() => handleJoinRoom()}
+                >
+                  Join Room
+                </button>
+              </div>
+            </div>
+          </div>
 
-              OR
+          <div className="col-md-5">
+            <div className="card">
+              <div className="card-body">
+                <h4 className="card-title mb-4">Create Room</h4>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Select Language:</label>
+                    <select
+                      className="form-select"
+                      value={formData.language || ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, language: e.target.value || null }))
+                      }
+                    >
+                      <option value="auto">Auto Detect</option>
+                      {languages
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((lang) => (
+                          <option key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
-              <button
-                className="btn btn-success"
-                onClick={() => handleCreateRoom()}
-              // disabled={!roomId.trim()}
-              >
-                Create Room
-              </button>
+                  <div className="col-md-6">
+                    <label className="form-label">Translate Language:</label>
+                    <select
+                      className="form-select"
+                      value={formData.translateLanguage || ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
+                      }
+                    >
+                      {languages
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((lang) => (
+                          <option key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="form-check d-flex justify-content-center">
+                      <input
+                        type="checkbox"
+                        className="form-check-input me-2"
+                        id="moderationCheck"
+                        checked={formData.moderation}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, moderation: e.target.checked }))
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="moderationCheck">
+                        Enable Moderation
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <button
+                      className="btn btn-success w-100"
+                      onClick={() => handleCreateRoom()}
+                    >
+                      Create Room
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -929,77 +998,152 @@ const SpeechToText = () => {
 
 
   return (
-    <div className="container text-center mt-5">
-      <h2>Speech Recorder (Send on Pause)</h2>
-
-
-      {room && room.role == 'owner' && (<>
-        <div className="row">
-          <div className="col-md-4">
-            <div className="mb-3">
-              <label className="form-label">Select Language:</label>
-              <select
-                className="form-select w-50 mx-auto"
-                value={formData.language || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, language: e.target.value || null }))
-                }
-              >
-                <option value="auto">Auto Detect</option>
-                {languages
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-          </div>
-          <div className="col-md-4">
-            <div className="mb-3">
-              <label className="form-label">Pause Control (milliseconds):</label>
-              <input
-                type="number"
-                className="form-control w-50 mx-auto"
-                value={formData.silenceDuration || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null, userSetDuration: Number(e.target.value) || null }))
-                }
-                min="0"
-              />
-
-            </div>
-          </div>
-          <div className="col-md-4">
-            <div className="mb-3">
-              <label className="form-label">Chunks Control (milliseconds):</label>
-              <input
-                type="number"
-                className="form-control w-50 mx-auto"
-                value={formData.chunksDuration || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, chunksDuration: Number(e.target.value) || null }))
-                }
-                min="0"
-              />
-            </div>
-          </div>
-        </div>
-
-
-        <div className="my-4">
+    <div className="container mt-5">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Speech Recorder (Send on Pause)</h2>
+        {room && room.role == 'owner' && (
           <button
-            className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg`}
-            onClick={isRecording ? handleStopRecording : handleStartRecording}
+            className="btn btn-outline-secondary"
+            onClick={() => setShowSettings(!showSettings)}
+            title="Settings"
           >
-            {isRecording ? 'Stop Recording' : 'Start Recording'}
+            <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
           </button>
-        </div>
+        )}
+      </div>
 
+      {room && room.role == 'owner' && (
+        <>
+          {showSettings && (
+            <div className="mb-4">
+              <h4 className="mb-4">Settings</h4>
+              <div className="row g-4">
+                <div className="col-md-4">
+                  <div className="card h-100">
+                    <div className="card-body">
+                      <h5 className="card-title">Language Settings</h5>
+                      <div className="mb-3">
+                        <label className="form-label">Speech Language:</label>
+                        <select
+                          className="form-select"
+                          value={formData.language || ""}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, language: e.target.value || null }))
+                          }
+                        >
+                          <option value="auto">Auto Detect</option>
+                          {languages
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((lang) => (
+                              <option key={lang.code} value={lang.code}>
+                                {lang.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Translate Language:</label>
+                        <select
+                          className="form-select"
+                          value={formData.translateLanguage || ""}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, translateLanguage: e.target.value || null }))
+                          }
+                        >
+                          {languages
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((lang) => (
+                              <option key={lang.code} value={lang.code}>
+                                {lang.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-      </>)}
+                <div className="col-md-4">
+                  <div className="card h-100">
+                    <div className="card-body">
+                      <h5 className="card-title">Timing Controls</h5>
+                      <div className="mb-3">
+                        <label className="form-label">Pause Duration (ms):</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={formData.silenceDuration || ""}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, silenceDuration: Number(e.target.value) || null, userSetDuration: Number(e.target.value) || null }))
+                          }
+                          min="0"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Chunks Duration (ms):</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={formData.chunksDuration || ""}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, chunksDuration: Number(e.target.value) || null }))
+                          }
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-4">
+                  <div className="card h-100">
+                    <div className="card-body p-4">
+                      <h5 className="card-title mb-4">Additional Options</h5>
+                      <div className="form-check py-1">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="moderationCheck"
+                          checked={formData.moderation}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, moderation: e.target.checked }))
+                          }
+                        />
+                        <label className="form-check-label" htmlFor="moderationCheck">
+                          Enable Moderation
+                        </label>
+                      </div>
+                      <div className="form-check py-1">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="disableSharingCheck"
+                          checked={formData.disableSharing}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, disableSharing: e.target.checked }))
+                          }
+                        />
+                        <label className="form-check-label" htmlFor="disableSharingCheck">
+                          Disable Sharing
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="my-4">
+            <button
+              className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg`}
+              onClick={isRecording ? handleStopRecording : handleStartRecording}
+            >
+              {isRecording ? 'Stop Recording' : 'Start Recording'}
+            </button>
+          </div>
+        </>
+      )}
 
 
 
@@ -1007,11 +1151,19 @@ const SpeechToText = () => {
         <div className="row align-items-center mb-2">
           <div className="col-md-6">
             <h4>Transcriptions:</h4>
+            {listTranscriptions.length === 0 && room ? (
+              room.role === 'owner' ? (
+                <p>Start recording for transcriptions</p>
+              ) : (
+                <p>Waiting for transcriptions...</p>
+              )
+            ) : null}
           </div>
 
-          {room && room.role == 'owner' && (<>
-            {/* Right Column: Translate Language Dropdown */}
-            <div className="col-md-6 text-md-end">
+          {room && room.role == 'owner' && (
+            <>
+              {/* Right Column: Translate Language Dropdown */}
+              {/* <div className="col-md-6 text-md-end">
               <label className="form-label d-block">Translate Language:</label>
               <select
                 className="form-select w-50 d-inline-block"
@@ -1028,7 +1180,9 @@ const SpeechToText = () => {
                     </option>
                   ))}
               </select>
-            </div></>)}
+            </div> */}
+            </>
+          )}
 
         </div>
 
@@ -1041,7 +1195,7 @@ const SpeechToText = () => {
               return <ReactAudioPlayer
                 key={combinedAudio.key}
                 src={audioUrl}
-                controls                
+                controls
                 onEnded={() => {
                   setCombinedAudio(prev => ({
                     ...prev,
@@ -1133,6 +1287,8 @@ const SpeechToText = () => {
                     )}
                   </div>
                 )}
+
+                
                 <div className='row'>
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
@@ -1142,20 +1298,15 @@ const SpeechToText = () => {
                           onMouseEnter={() => handleMouseEnter(idx)}
                           onMouseLeave={handleMouseLeave}
                           className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
-                          style={{ 
-                            position: 'relative',
-                            minHeight: '2rem',
-                            overflow: 'hidden'
-                          }}
                         >
                           {transcription.status === 'processing' ? (
                             'Processing...'
                           ) : (
                             <>
                               <div
-                                contenteditable={room.role == 'owner' && !transcription?.error ? "true" : "false"}
+                                contenteditable={room.role == 'owner' && !transcription?.error && transcription.status === 'completed' ? "true" : "false"}
                                 onBlur={(e) => {
-                                  if (room.role === 'owner' && !transcription?.error) {
+                                  if (room.role === 'owner' && !transcription?.error && transcription.status === 'completed') {
                                     const newText = e.target.textContent;
                                     setTranscriptions(prev =>
                                       prev.map(item =>
@@ -1166,19 +1317,12 @@ const SpeechToText = () => {
                                     );
                                   }
                                 }}
-                                style={{
-                                  minHeight: '1.5rem',
-                                  outline: 'none',
-                                  wordBreak: 'break-word',
-                                  position: 'relative',
-                                  zIndex: 1
-                                }}
                               >
                                 {cleanHtml(transcription?.text || transcription?.error)}
                               </div>
                               {transcription?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
                               {transcription?.audio?.chunks && hoveredIndex === idx && (
-                                <div className="mt-2" style={{ position: 'relative', zIndex: 2 }}>
+                                <div className="mt-2">
                                   {(() => {
                                     const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
                                     return <ReactAudioPlayer
@@ -1186,6 +1330,23 @@ const SpeechToText = () => {
                                       controls
                                     />;
                                   })()}
+                                  {/* <audio
+                                    controls
+                                    className="w-100"
+                                    preload="metadata"
+                                    playsInline
+                                    webkit-playsinline="true"
+                                    x5-playsinline="true"
+                                    x5-video-player-type="h5"
+                                    x5-video-player-fullscreen="true"
+                                    key={transcription.uuid}
+                                  >
+                                    {(() => {
+                                      const audioUrl = createAudioUrl(transcription.audio.chunks, transcription.audio.mimeType);
+                                      return renderAudioSources({ url: audioUrl, mimeType: transcription.audio.mimeType });
+                                    })()}
+                                    Your browser does not support the audio element.
+                                  </audio> */}
                                 </div>
                               )}
                             </>
@@ -1211,9 +1372,9 @@ const SpeechToText = () => {
                             ) : (
                               <>
                                 <div
-                                  contenteditable={room.role == 'owner' && !transcription?.translate?.error ? "true" : "false"}
+                                  contenteditable={room.role == 'owner' && !transcription?.translate?.error && transcription?.translate?.status === 'completed' ? "true" : "false"}
                                   onBlur={(e) => {
-                                    if (room.role === 'owner' && !transcription?.translate?.error) {
+                                    if (room.role === 'owner' && !transcription?.translate?.error && transcription?.translate?.status === 'completed') {
                                       const newText = e.target.textContent;
                                       setTranscriptions(prev =>
                                         prev.map(item =>
@@ -1228,6 +1389,46 @@ const SpeechToText = () => {
                                   {cleanHtml(transcription?.translate?.text || transcription?.translate?.error)}
                                 </div>
                                 {transcription?.translate?.status === 'reprocessing' && <span> ....Reprocessing...</span>}
+                                {transcription?.audio?.chunks && hoveredIndex === idx && (
+                                  <>
+                                    {(transcription?.translate?.status === 'completed' &&
+                                      //formData.moderation &&
+                                      transcription.moderation_status == 'pending') && (
+                                        <div className="mt-2 pb-2">
+                                          {/* Replace with actual buttons */}
+                                          <button
+                                            className="btn btn-sm btn-success me-2"
+                                            onClick={() => {
+                                              setTranscriptions(prev =>
+                                                prev.map(item =>
+                                                  item.uuid === transcription.uuid
+                                                    ? { ...item, moderation_status: 'approved' }
+                                                    : item
+                                                )
+                                              );
+                                            }}
+                                          >
+                                            Approve
+                                          </button>
+
+                                          <button
+                                            className="btn btn-sm btn-danger"
+                                            onClick={() => {
+                                              setTranscriptions(prev =>
+                                                prev.map(item =>
+                                                  item.uuid === transcription.uuid
+                                                    ? { ...item, moderation_status: 'rejected' }
+                                                    : item
+                                                )
+                                              );
+                                            }}
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      )}
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
