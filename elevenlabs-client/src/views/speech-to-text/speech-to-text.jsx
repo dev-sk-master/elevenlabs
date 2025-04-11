@@ -770,7 +770,7 @@ const SpeechToText = () => {
   };
 
   const handleMouseLeave = () => {
-    //setHoveredIndex(null);
+    setHoveredIndex(null);
   };
 
 
@@ -1289,14 +1289,14 @@ const SpeechToText = () => {
                 )}
 
                 
-                <div className='row'>
+                <div className='row' onMouseLeave={handleMouseLeave}>
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
                       {listTranscriptions.map((transcription, idx) => (
                         <div
                           key={`transcription-${idx}`}
                           onMouseEnter={() => handleMouseEnter(idx)}
-                          onMouseLeave={handleMouseLeave}
+                          //onMouseLeave={handleMouseLeave}
                           className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                         >
                           {transcription.status === 'processing' ? (
@@ -1364,7 +1364,7 @@ const SpeechToText = () => {
                           <div
                             key={`translation-${idx}`}
                             onMouseEnter={() => handleMouseEnter(idx)}
-                            onMouseLeave={handleMouseLeave}
+                            //onMouseLeave={handleMouseLeave}
                             className={`mb-2 ${hoveredIndex === idx ? 'bg-warning px-1' : ''}`}
                           >
                             {transcription?.translate?.status === 'processing' ? (
