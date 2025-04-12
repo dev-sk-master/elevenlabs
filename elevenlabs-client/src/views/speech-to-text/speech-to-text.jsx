@@ -1242,23 +1242,23 @@ const SpeechToText = () => {
                           </div>
 
                           {/* Individual Audio Player (uses segment chunks) */}
-                          {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && (
-                            <div className="mt-2 border-top pt-2">
-                              {(() => {
-                                const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
-                                if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
-                                return <ReactAudioPlayer
-                                  src={audioUrl}
-                                  controls
-                                  preload="none" // Don't preload segment previews
-                                  style={{ height: '40px', width: '100%' }}
-                                  onError={(e) => console.error("Individual audio error", e)}
-                                  onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                  onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                />;
-                              })()}
-                            </div>
-                          )}
+                          {/* {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && ( */}
+                          <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
+                            {(() => {
+                              const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
+                              if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
+                              return <ReactAudioPlayer
+                                src={audioUrl}
+                                controls
+                                preload="none" // Don't preload segment previews
+                                style={{ height: '40px', width: '100%' }}
+                                onError={(e) => console.error("Individual audio error", e)}
+                                onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                                onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                              />;
+                            })()}
+                          </div>
+                          {/* )} */}
                         </div>
                       ))}
                     </div>
@@ -1297,18 +1297,18 @@ const SpeechToText = () => {
                           </div>
 
                           {/* Moderation Controls on Hover (Owner Only) */}
-                          {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) && (
-                            <div className="mt-2 pt-2 border-top text-center moderation-controls">
-                              <small className='text-muted me-2'>Moderation:</small>
-                              <div className="btn-group btn-group-sm" role="group">
-                                <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
-                                <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
-                                {/* {item.moderation_status !== 'pending' && (
+                          {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
+                          <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
+                            <small className='text-muted me-2'>Moderation:</small>
+                            <div className="btn-group btn-group-sm" role="group">
+                              <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
+                              <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
+                              {/* {item.moderation_status !== 'pending' && (
                                   <button type="button" className="btn btn-outline-secondary" onClick={() => handleModeration(item.uuid, 'pending')}>Reset</button>
                                 )} */}
-                              </div>
                             </div>
-                          )}
+                          </div>
+                          {/*} )}*/}
                         </div>
                       ))}
                     </div>
