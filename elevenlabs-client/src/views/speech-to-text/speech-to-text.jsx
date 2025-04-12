@@ -543,18 +543,19 @@ const SpeechToText = () => {
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          // console.log(`Chunk received: ${event.data.size} bytes, type: ${event.data.type || mimeType}`);
+          console.log(`Chunk received: ${event.data.size} bytes, type: ${event.data.type || mimeType}`);
           audioChunksRef.current.push(event.data);
-          const currentUuid = recordingRef.current?.uuid;
-          if (currentUuid) {
-            setTranscriptions(prev =>
-              prev.map(item =>
-                item.uuid === currentUuid
-                  ? { ...item, audio: { ...(item.audio || {}), chunks: [...audioChunksRef.current], mimeType: mimeType } } // Store effective mimeType
-                  : item
-              )
-            );
-          }
+          //const currentUuid = recordingRef.current?.uuid;
+          //if (currentUuid) {
+          // setTranscriptions(prev =>
+          //   prev.map(item =>
+          //     item.uuid === currentUuid
+          //       ? { ...item, audio: { ...(item.audio || {}), chunks: [...audioChunksRef.current], mimeType: mimeType } } // Store effective mimeType
+          //       : item
+          //   )
+          // );
+          sendAudioToServer(audioChunksRef.current, mimeType);
+          //}
         }
       };
 
@@ -715,7 +716,8 @@ const SpeechToText = () => {
               ...(item.translate || {}),
               status: item.translate?.status === 'completed' || item.translate?.status === 'failed' ? 'reprocessing' : 'processing',
               error: null // Clear previous translation error
-            }
+            },
+            audio: { ...(item.audio || {}), chunks: chunks, mimeType: mimeType }
           };
         }
         return item;
