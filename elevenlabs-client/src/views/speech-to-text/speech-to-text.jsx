@@ -714,7 +714,7 @@ const SpeechToText = () => {
             // Set translation status - assuming it might be needed
             translate: {
               ...(item.translate || {}),
-              status: item.translate?.status === 'completed' || item.translate?.status === 'failed' ? 'reprocessing' : 'processing',
+              status: ['completed', 'failed'].includes(item.translate?.status) ? 'reprocessing' : 'processing',
               error: null // Clear previous translation error
             },
             audio: { ...(item.audio || {}), chunks: chunks, mimeType: mimeType }
@@ -819,7 +819,7 @@ const SpeechToText = () => {
             ...item,
             translate: {
               ...currentTranslate,
-              status: currentTranslate.status === 'completed' || currentTranslate.status === 'failed' ? 'reprocessing' : 'processing',
+              status: ['completed', 'failed'].includes(currentTranslate.status) ? 'reprocessing' : 'processing',
               error: null // Clear previous error
             }
           };
