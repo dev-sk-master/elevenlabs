@@ -79,6 +79,7 @@ const SpeechToText = () => {
   }, [formData]);
 
   useEffect(() => {
+    console.log('transcriptions', transcriptions)
     transcriptionsRef.current = transcriptions;
   }, [transcriptions]);
 
@@ -615,18 +616,112 @@ const SpeechToText = () => {
     }
   };
 
+  // const sendAudioToServer = async (chunks, mimeType) => {
+  //   // ... (sending logic - unchanged) ...
+  //   if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
+  //   if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
+
+  //   const { uuid } = recordingRef.current;
+  //   const audioBlob = new Blob(chunks, { type: mimeType });
+  //   console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}`);
+
+  //   setTranscriptions(prev =>
+  //     prev.map(item => (item.uuid === uuid ? { ...item, status: ['completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing', error: null } : item))
+  //   );
+
+  //   try {
+  //     const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
+  //     const response = await fetch(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
+
+  //     if (!response.ok) {
+  //       let errorMsg = `Transcription failed (${response.status})`;
+  //       try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
+  //       throw new Error(errorMsg);
+  //     }
+
+  //     const data = await response.json();
+  //     console.log(`Transcription received for ${uuid}: "${data.text}"`);
+  //     setTranscriptions(prev =>
+  //       prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'completed' } : item))
+  //     );
+
+  //     if (data.text && formDataRef.current.translateLanguage) {
+  //       translateData(uuid, data.text);
+  //     }
+
+  //   } catch (error) {
+  //     console.error(`Transcription error for ${uuid}:`, error);
+  //     setTranscriptions(prev =>
+  //       prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'failed' } : item))
+  //     );
+  //   }
+  // };
+
+  // const translateData = async (uuid, textToTranslate) => {
+  //   // ... (translation logic - unchanged) ...
+  //   if (!textToTranslate || !formDataRef.current.translateLanguage) { return; }
+  //   console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}`);
+
+  //   setTranscriptions(prev =>
+  //     prev.map(item => item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), status: item.translate?.status === 'completed' ? 'reprocessing' : 'processing', error: null } } : item) // Clear previous error
+  //   );
+
+  //   try {
+  //     const response = await fetch(`${import.meta.env.VITE_API_URL}/translate`, {
+  //       method: 'POST', body: JSON.stringify({ text: textToTranslate, target: formDataRef.current.translateLanguage }),
+  //       headers: { 'Content-Type': "application/json" }
+  //     });
+
+  //     if (!response.ok) {
+  //       let errorMsg = `Translation failed (${response.status})`;
+  //       try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
+  //       throw new Error(errorMsg);
+  //     }
+
+  //     const responseData = await response.json();
+  //     console.log(`Translation received for ${uuid}: "${responseData.text}"`);
+  //     setTranscriptions(prev =>
+  //       prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...responseData, status: 'completed' } } : item))
+  //     );
+
+  //   } catch (error) {
+  //     console.error(`Translation error for ${uuid}:`, error);
+  //     setTranscriptions(prev =>
+  //       prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), error: error.message, status: 'failed' } } : item))
+  //     );
+  //   }
+  // };
+
   const sendAudioToServer = async (chunks, mimeType) => {
-    // ... (sending logic - unchanged) ...
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
     const { uuid } = recordingRef.current;
     const audioBlob = new Blob(chunks, { type: mimeType });
+
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}`);
 
+    // Set initial processing/reprocessing status for both transcription and translation
     setTranscriptions(prev =>
-      prev.map(item => (item.uuid === uuid ? { ...item, status: ['completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing', error: null } : item))
+      prev.map(item => {
+        if (item.uuid === uuid) {
+          return {
+            ...item,
+            // Set transcription status
+            status: ['completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
+            error: null, // Clear previous transcription error
+            // Set translation status - assuming it might be needed
+            translate: {
+              ...(item.translate || {}),
+              status: item.translate?.status === 'completed' || item.translate?.status === 'failed' ? 'reprocessing' : 'processing',
+              error: null // Clear previous translation error
+            }
+          };
+        }
+        return item;
+      })
     );
+
 
     try {
       const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
@@ -635,35 +730,102 @@ const SpeechToText = () => {
       if (!response.ok) {
         let errorMsg = `Transcription failed (${response.status})`;
         try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
-        throw new Error(errorMsg);
+        throw new Error(errorMsg); // Go to catch block
       }
 
       const data = await response.json();
       console.log(`Transcription received for ${uuid}: "${data.text}"`);
+
+      // Update transcription status to completed first
+      // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
         prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'completed' } : item))
       );
 
-      if (data.text && formDataRef.current.translateLanguage) {
+      // --- Translation Handling ---
+      // Assuming translation is always intended if transcription succeeds
+      if (data.text != "") {
+        // Proceed with translation if text exists
         translateData(uuid, data.text);
+      } else {
+        // Transcription succeeded but text is empty, fail the translation step
+        console.warn(`Setting translation to failed for ${uuid}: Transcription text is empty.`);
+        setTranscriptions(prev =>
+          prev.map(item => {
+            if (item.uuid === uuid) {
+              // Keep completed transcription data, update translation status
+              return {
+                ...item,
+                translate: {
+                  ...(item.translate || {}),
+                  status: 'failed',
+                  error: 'Translation skipped: Empty transcription text.'
+                }
+              };
+            }
+            return item;
+          })
+        );
       }
+      // --- End Translation Handling ---
 
     } catch (error) {
       console.error(`Transcription error for ${uuid}:`, error);
+      // Update transcription AND translation status to failed
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'failed' } : item))
+        prev.map(item => {
+          if (item.uuid === uuid) {
+            return {
+              ...item,
+              status: 'failed',
+              error: error.message, // Set transcription error
+              translate: {
+                ...(item.translate || {}),
+                status: 'failed',
+                error: 'Translation skipped: Transcription failed.' // Set translation error
+              }
+            };
+          }
+          return item;
+        })
       );
     }
   };
 
+  // The translateData function remains unchanged
+  // The check for translateLanguage inside it still provides a safety layer
   const translateData = async (uuid, textToTranslate) => {
-    // ... (translation logic - unchanged) ...
-    if (!textToTranslate || !formDataRef.current.translateLanguage) { return; }
+    // Keep this check for robustness within translateData itself
+    if (!textToTranslate || !formDataRef.current.translateLanguage) {
+      console.warn(`translateData skipped for ${uuid}: Empty text or missing target language.`);
+      // Optionally set status to failed here too, though sendAudioToServer should cover most cases
+      setTranscriptions(prev =>
+        prev.map(item => item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), status: 'failed', error: 'Missing text or target language.' } } : item)
+      );
+      return;
+    }
+
     console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}`);
 
+    // Set translation status (handles reprocessing automatically)
     setTranscriptions(prev =>
-      prev.map(item => item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), status: item.translate?.status === 'completed' ? 'reprocessing' : 'processing', error: null } } : item) // Clear previous error
+      prev.map(item => {
+        if (item.uuid === uuid) {
+          // Ensure translate object exists before setting status
+          const currentTranslate = item.translate || {};
+          return {
+            ...item,
+            translate: {
+              ...currentTranslate,
+              status: currentTranslate.status === 'completed' || currentTranslate.status === 'failed' ? 'reprocessing' : 'processing',
+              error: null // Clear previous error
+            }
+          };
+        }
+        return item;
+      })
     );
+
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/translate`, {
@@ -690,7 +852,6 @@ const SpeechToText = () => {
       );
     }
   };
-
 
   // --- REMOVED: combineAudioChunks function ---
   // The full audio is now generated directly by fullMediaRecorderRef's onstop handler.
@@ -1063,8 +1224,8 @@ const SpeechToText = () => {
                               {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
                               {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
                               {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
-                              {item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
-                              {item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
+                              {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
+                              {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
                             </span>
                           </div>
 
@@ -1116,6 +1277,7 @@ const SpeechToText = () => {
                             <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
                             {/* Status Indicators */}
                             <span>
+                              {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
                               {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
                               {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
                               {item.translate?.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
@@ -1133,7 +1295,7 @@ const SpeechToText = () => {
                           </div>
 
                           {/* Moderation Controls on Hover (Owner Only) */}
-                          {room.role === 'owner' && hoveredIndex === idx && formData.moderation && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) && (
+                          {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) && (
                             <div className="mt-2 pt-2 border-top text-center moderation-controls">
                               <small className='text-muted me-2'>Moderation:</small>
                               <div className="btn-group btn-group-sm" role="group">
