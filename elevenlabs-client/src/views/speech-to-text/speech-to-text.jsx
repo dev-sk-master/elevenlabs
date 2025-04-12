@@ -474,7 +474,11 @@ const SpeechToText = () => {
           let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
           dynamicDuration = Math.round(dynamicDuration / 50) * 50;
 
-          // console.log(`Silence detected. Setting timeout: ${dynamicDuration}ms (from detectSilenceLoop)`);
+          console.log(`Silence detected. Setting timeout: ${dynamicDuration}ms (from detectSilenceLoop)`);
+          setFormData((prev) => ({
+            ...prev,
+            silenceDuration: dynamicDuration // Use the generated value here
+          }));
           silenceTimerRef.current = setTimeout(() => {
             console.log('Silence duration exceeded, stopping current segment... (from detectSilenceLoop)');
             if (mediaRecorderRef.current?.state === 'recording') {
