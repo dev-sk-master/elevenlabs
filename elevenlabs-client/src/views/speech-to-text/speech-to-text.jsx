@@ -712,7 +712,7 @@ const SpeechToText = () => {
   // };
 
   const sendAudioToServer = async (chunks, mimeType) => {
-    console.log('sendAudioToServer xxxx')
+    console.log('sendAudioToServer chunks:', chunks)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
