@@ -170,6 +170,7 @@ const SpeechToText = () => {
 
     for (const current of transcriptions) {
       if (current.moderation_status !== 'approved') continue;
+      if (current.status !== 'completed') continue;//only send if the transcription is completed
       const prev = prevMap.get(current.uuid);
       if (!prev || !isEqual(prev.text, current.text) || !isEqual(prev.translate?.text, current.translate?.text) || prev.moderation_status !== current.moderation_status) {
         const { /*audio,*/ ...rest } = current;
@@ -187,6 +188,23 @@ const SpeechToText = () => {
     }
   }, [transcriptions, room, prevTranscriptions]);
 
+  function generateFriendlyCode(length = 6) { // Default to 6 for better uniqueness
+    // Exclude confusing characters (0, O, 1, l, I)
+    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+      // Use crypto.getRandomValues for better randomness if available in the environment
+      // For browsers:
+      const randomValue = window.crypto.getRandomValues(new Uint32Array(1))[0];
+      result += characters.charAt(randomValue % charactersLength);
+      // Fallback for environments without crypto (less secure randomness)
+      // result += characters.charAt(Math.floor(Math.random() * charactersLength));
+
+      result = result.toLowerCase();
+    }
+    return result;
+  }
 
   // --- Audio Recording Logic ---
 
@@ -921,7 +939,8 @@ const SpeechToText = () => {
     window.location.hash = targetRoomId;
   };
   const handleCreateRoom = () => { /* ... (same as before) ... */
-    const newRoomId = uuidv4();
+    //const newRoomId = uuidv4();
+    const newRoomId = generateFriendlyCode();
     console.log(`Creating room: ${newRoomId}`);
     socket.emit('create-room', newRoomId);
     setRoom({ roomId: newRoomId, role: 'owner' });
@@ -963,7 +982,7 @@ const SpeechToText = () => {
                     className="form-control"
                     placeholder="Enter Room ID from URL or shared link"
                     value={roomFormData.roomId}
-                    onChange={(e) => setRoomFormData({ roomId: e.target.value })}
+                    onChange={(e) => setRoomFormData({ roomId: e.target.value.trim() })}
                   />
                 </div>
                 <button
@@ -1202,7 +1221,7 @@ const SpeechToText = () => {
                     className="btn btn-sm btn-light rounded-circle position-sticky shadow-sm"
                     onClick={scrollToBottom}
                     title="Scroll to bottom"
-                    style={{ top: '90%', left: '95%', transform: 'translate(-50%, -50%)', zIndex: 1050, float: 'right' }}
+                    style={{ top: '90%', left: '100%', transform: 'translate(-50%, -50%)', zIndex: 1050 }}
                   >
                     <i className="bi bi-arrow-down"></i>
                   </button>
@@ -1217,20 +1236,22 @@ const SpeechToText = () => {
                         <div
                           key={`transcription-${item.uuid}`}
                           onMouseEnter={() => handleMouseEnter(idx)}
-                          className={`mb-3 p-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
+                          className={`p-2 ${room.role === 'owner' ? 'mb-2 border rounded' : ''} position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
                           style={{ transition: 'background-color 0.2s ease-in-out' }}
                         >
-                          <div className='d-flex justify-content-between align-items-center mb-1'>
-                            <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
-                            {/* Status Indicators */}
-                            <span>
-                              {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
-                              {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
-                              {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
-                              {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
-                              {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
-                            </span>
-                          </div>
+                          {room.role === 'owner' && (
+                            <div className='d-flex justify-content-between align-items-center mb-1'>
+                              <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
+                              {/* Status Indicators */}
+                              <span>
+                                {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
+                                {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
+                                {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
+                                {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
+                                {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
+                              </span>
+                            </div>
+                          )}
 
                           <div
                             contentEditable={room.role === 'owner' && item.status == 'completed'}
@@ -1255,8 +1276,8 @@ const SpeechToText = () => {
                                 preload="none" // Don't preload segment previews
                                 style={{ height: '40px', width: '100%' }}
                                 onError={(e) => console.error("Individual audio error", e)}
-                                //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                              //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                              //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
                               />;
                             })()}
                           </div>
@@ -1274,19 +1295,21 @@ const SpeechToText = () => {
                         <div
                           key={`translation-${item.uuid}`}
                           onMouseEnter={() => handleMouseEnter(idx)}
-                          className={`mb-3 p-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
+                          className={`p-2 ${room.role === 'owner' ? 'mb-2 border rounded' : ''} position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
                           style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
                         >
-                          <div className='d-flex justify-content-between align-items-center mb-1'>
-                            <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
-                            {/* Status Indicators */}
-                            <span>
-                              {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
-                              {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
-                              {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
-                              {item.translate?.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
-                            </span>
-                          </div>
+                          {room.role === 'owner' && (
+                            <div className='d-flex justify-content-between align-items-center mb-1'>
+                              <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
+                              {/* Status Indicators */}
+                              <span>
+                                {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
+                                {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
+                                {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
+                                {item.translate?.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
+                              </span>
+                            </div>
+                          )}
 
                           <div
                             contentEditable={room.role === 'owner' && item.translate?.status === 'completed'}
