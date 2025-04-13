@@ -694,6 +694,7 @@ const SpeechToText = () => {
   // };
 
   const sendAudioToServer = async (chunks, mimeType) => {
+    console.log('sendAudioToServer xxxx')
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
@@ -712,11 +713,11 @@ const SpeechToText = () => {
             status: ['completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
             error: null, // Clear previous transcription error
             // Set translation status - assuming it might be needed
-            translate: {
-              ...(item.translate || {}),
-              status: ['completed', 'failed'].includes(item.translate?.status) ? 'reprocessing' : 'processing',
-              error: null // Clear previous translation error
-            },
+            // translate: {
+            //   ...(item.translate || {}),
+            //   status: ['completed', 'failed'].includes(item.translate?.status) ? 'reprocessing' : 'processing',
+            //   error: null // Clear previous translation error
+            // },
             audio: { ...(item.audio || {}), chunks: chunks, mimeType: mimeType }
           };
         }
@@ -1248,13 +1249,14 @@ const SpeechToText = () => {
                               const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
                               if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
                               return <ReactAudioPlayer
+                                key={audioUrl}
                                 src={audioUrl}
                                 controls
                                 preload="none" // Don't preload segment previews
                                 style={{ height: '40px', width: '100%' }}
                                 onError={(e) => console.error("Individual audio error", e)}
-                                onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                                //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                                //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
                               />;
                             })()}
                           </div>
