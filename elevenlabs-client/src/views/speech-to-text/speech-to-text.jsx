@@ -1294,7 +1294,7 @@ const SpeechToText = () => {
                             <span
                               key={`transcription-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
-                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
+                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''}`}
                               style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
                             >
                               {cleanHtml(item.text)}
@@ -1362,14 +1362,14 @@ const SpeechToText = () => {
 
                       {room.role === 'user' && (<>
                         {sortedTranscriptions.map((item, idx) => (<>
-                          {item.translate?.text != "" && item.translate?.error && (
+                          {item.translate?.text != "" && !item.translate?.error && (
                             <span
                               key={`translation-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
-                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
+                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''}`}
                               style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
                             >
-                              {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : cleanHtml(item.translate?.text)}
+                              {cleanHtml(item.translate?.text)}
                             </span>
                           )}
                         </>))}
