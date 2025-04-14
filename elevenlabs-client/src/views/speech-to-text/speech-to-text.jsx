@@ -580,9 +580,9 @@ const SpeechToText = () => {
       mediaRecorder.onstop = () => {
         const segmentUuid = recordingRef.current?.uuid;
         console.log(`Segment ${segmentUuid} stopped. Final chunks: ${audioChunksRef.current.length}`);
-        if (audioChunksRef.current.length > 0) {
-          sendAudioToServer([...audioChunksRef.current], mimeType);
-        }
+        // if (audioChunksRef.current.length > 0) {
+        //   sendAudioToServer([...audioChunksRef.current], mimeType);
+        // }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
       };
@@ -765,7 +765,7 @@ const SpeechToText = () => {
 
       // --- Translation Handling ---
       // Assuming translation is always intended if transcription succeeds
-      if (data.text != "") {
+      if (data.text.trim() != "") {
         // Proceed with translation if text exists
         translateData(uuid, data.text);
       } else {
@@ -1266,24 +1266,24 @@ const SpeechToText = () => {
                             </div>
 
                             {/* Individual Audio Player (uses segment chunks) */}
-                            {/* {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && ( */}
-                            <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
-                              {(() => {
-                                const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
-                                if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
-                                return <ReactAudioPlayer
-                                  key={audioUrl}
-                                  src={audioUrl}
-                                  controls
-                                  preload="none" // Don't preload segment previews
-                                  style={{ height: '40px', width: '100%' }}
-                                  onError={(e) => console.error("Individual audio error", e)}
-                                //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                                />;
-                              })()}
-                            </div>
-                            {/* )} */}
+                            {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && (
+                              <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
+                                {(() => {
+                                  const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
+                                  if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
+                                  return <ReactAudioPlayer
+                                    key={audioUrl}
+                                    src={audioUrl}
+                                    controls
+                                    preload="none" // Don't preload segment previews
+                                    style={{ height: '40px', width: '100%' }}
+                                    onError={(e) => console.error("Individual audio error", e)}
+                                  //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                                  //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                                  />;
+                                })()}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </>)}
