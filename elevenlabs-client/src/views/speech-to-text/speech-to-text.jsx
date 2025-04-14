@@ -760,7 +760,7 @@ const SpeechToText = () => {
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'completed' } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, ...data, text: data.text.trim(), status: 'completed' } : item))
       );
 
       // --- Translation Handling ---
@@ -863,7 +863,7 @@ const SpeechToText = () => {
       const responseData = await response.json();
       console.log(`Translation received for ${uuid}: "${responseData.text}"`);
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...responseData, status: 'completed' } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...responseData, text: responseData.text.trim(), status: 'completed' } } : item))
       );
 
     } catch (error) {
