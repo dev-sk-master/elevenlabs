@@ -1290,15 +1290,18 @@ const SpeechToText = () => {
 
                       {room.role === 'user' && (<>
                         {sortedTranscriptions.map((item, idx) => (<>
-                          <span
-                            key={`transcription-${item.uuid}`}
-                            onMouseEnter={() => handleMouseEnter(idx)}
-                            className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
-                            style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
-                          >
-                            {item.error ? <span className='text-danger'>{item.error}</span> : cleanHtml(item.text)}
-                          </span>
-                        </>))}
+                          {item.text != "" && !item.error && (
+                            <span
+                              key={`transcription-${item.uuid}`}
+                              onMouseEnter={() => handleMouseEnter(idx)}
+                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                            >
+                              {cleanHtml(item.text)}
+                            </span>
+                          )}
+                        </>
+                        ))}
                       </>)}
 
 
@@ -1359,14 +1362,16 @@ const SpeechToText = () => {
 
                       {room.role === 'user' && (<>
                         {sortedTranscriptions.map((item, idx) => (<>
-                          <span
-                            key={`translation-${item.uuid}`}
-                            onMouseEnter={() => handleMouseEnter(idx)}
-                            className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
-                            style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
-                          >
-                            {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : cleanHtml(item.translate?.text)}
-                          </span>
+                          {item.translate?.text != "" && item.translate?.error && (
+                            <span
+                              key={`translation-${item.uuid}`}
+                              onMouseEnter={() => handleMouseEnter(idx)}
+                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                            >
+                              {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : cleanHtml(item.translate?.text)}
+                            </span>
+                          )}
                         </>))}
                       </>)}
 
