@@ -521,7 +521,7 @@ const SpeechToText = () => {
       }
       // --- Silence Detected ---
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
-        console.log('inside Silence Detected', silenceTimerRef.current)
+        //console.log('inside Silence Detected', silenceTimerRef.current)
         if (!silenceTimerRef.current) {
           // ... (dynamic duration calculation - unchanged) ...
           const latestItem = transcriptionsRef.current?.at(-1);
@@ -1323,7 +1323,7 @@ const SpeechToText = () => {
           <>
             {/* Mobile Toggle Buttons */}
             {isMobile && (
-              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: 'absolute', top: '5px' }}>
+              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: 'absolute', top: room.role == 'owner' ? '82px' : '5px' }}>
                 <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription</button>
                 <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation</button>
               </div>
