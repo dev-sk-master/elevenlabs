@@ -509,6 +509,7 @@ const SpeechToText = () => {
       }
       // --- Silence Detected ---
       else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
+        console.log('inside Silence Detected', silenceTimerRef.current)
         if (!silenceTimerRef.current) {
           // ... (dynamic duration calculation - unchanged) ...
           const latestItem = transcriptionsRef.current?.at(-1);
