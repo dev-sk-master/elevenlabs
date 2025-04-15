@@ -51,11 +51,9 @@ const SpeechToText = () => {
   const fullMediaRecorderRef = useRef(null);
   const fullAudioChunksRef = useRef([]);
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
-  const speechStartTimerRef = useRef(null);//Ref for the speech start delay timer
   // --- Constants ---
   const SPEECH_THRESHOLD = 0.05;
   const SILENCE_THRESHOLD = 0.01;
-  const MIN_SPEECH_DURATION_MS = 200;
 
   // --- Hooks ---
   const prevTranscriptions = usePrevious(transcriptions);
@@ -228,10 +226,6 @@ const SpeechToText = () => {
 
       setTranscriptions([]);
       hasSpokenRef.current = false;
-      clearTimeout(speechStartTimerRef.current); // Clear any lingering start timer
-      speechStartTimerRef.current = null;
-      clearTimeout(silenceTimerRef.current); // Clear any lingering silence timer
-      silenceTimerRef.current = null;
 
       // Reset full recording data
       setFullRecordingData(prevData => {
@@ -405,8 +399,8 @@ const SpeechToText = () => {
       analyserRef.current = null;
     } else { console.log("No active AudioContext to close."); }
 
-    clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null;
-    clearTimeout(speechStartTimerRef.current); speechStartTimerRef.current = null; // NEW: Clear speech start timer
+    clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = null;
     hasSpokenRef.current = false;
 
     // --- SOLUTION: Update state AND ref immediately on stop ---
@@ -448,93 +442,10 @@ const SpeechToText = () => {
   };
 
   // --- Main loop checking for silence using requestAnimationFrame ---
-  // const detectSilenceLoop = () => {
-  //   // Initial log now happens *after* ref is manually set in handleStartRecording
-  //   console.log('Starting detectSilenceLoop. isRecordingRef is now:', isRecordingRef.current);
-
-  //   if (!analyserRef.current) {
-  //     console.warn("detectSilenceLoop called without analyser. Stopping.");
-  //     return;
-  //   }
-
-  //   const analyser = analyserRef.current;
-  //   const bufferLength = analyser.frequencyBinCount;
-  //   const dataArray = new Uint8Array(bufferLength);
-  //   let animationFrameId; // To potentially cancel if needed, though returning is usually enough
-
-  //   const check = () => {
-  //     // *** Check the ref inside the loop ***
-  //     if (!analyserRef.current || !isRecordingRef.current) {
-  //       console.log('Stopping detectSilenceLoop check. Analyser:', !!analyserRef.current, 'Recording:', isRecordingRef.current);
-  //       clearTimeout(speechStartTimerRef.current); // Ensure speech start timer is cleared
-  //       speechStartTimerRef.current = null;
-  //       return; // Stop the loop
-  //     }
-
-  //     analyser.getByteFrequencyData(dataArray);
-  //     let sum = 0;
-  //     for (let i = 0; i < bufferLength; i++) { sum += dataArray[i]; }
-  //     let average = sum / bufferLength;
-  //     let volume = average / 128.0;
-
-  //     // --- Speech Detected ---
-  //     if (volume >= SPEECH_THRESHOLD) {
-  //       // Clear any active silence timer immediately
-  //       if (silenceTimerRef.current) {
-  //         clearTimeout(silenceTimerRef.current);
-  //         silenceTimerRef.current = null;
-  //         console.log('Sound detected, clearing silence timer.');
-  //       }
-
-  //       if (!hasSpokenRef.current) {
-  //         console.log('User started speaking! (from detectSilenceLoop)');
-  //         hasSpokenRef.current = true;
-  //         startNewRecordingSegment(); // Start segment recorder
-  //       }
-  //       if (silenceTimerRef.current) {
-  //         clearTimeout(silenceTimerRef.current);
-  //         silenceTimerRef.current = null;
-  //       }
-  //     }
-  //     // --- Silence Detected ---
-  //     else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
-  //       if (!silenceTimerRef.current) {
-  //         // ... (dynamic duration calculation - unchanged) ...
-  //         const latestItem = transcriptionsRef.current?.at(-1);
-  //         const userSetDuration = formDataRef.current.userSetDuration || 1000;
-  //         const minDuration = 500;
-  //         const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1.1) * 5, userSetDuration - minDuration) : 0;
-  //         let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
-  //         dynamicDuration = Math.round(dynamicDuration / 50) * 50;
-
-  //         console.log(`Silence detected. Setting timeout: ${dynamicDuration}ms (from detectSilenceLoop)`);
-  //         setFormData((prev) => ({
-  //           ...prev,
-  //           silenceDuration: dynamicDuration // Use the generated value here
-  //         }));
-  //         silenceTimerRef.current = setTimeout(() => {
-  //           console.log('Silence duration exceeded, stopping current segment... (from detectSilenceLoop)');
-  //           if (mediaRecorderRef.current?.state === 'recording') {
-  //             mediaRecorderRef.current.stop(); // This triggers onstop
-  //           } else {
-  //             console.warn("Silence timeout: Recorder wasn't running or already stopped.");
-  //           }
-  //           hasSpokenRef.current = false;
-  //           silenceTimerRef.current = null;
-  //         }, dynamicDuration);
-  //       }
-  //     }
-
-  //     // Continue the loop ONLY if still recording (checked at the top)
-  //     animationFrameId = requestAnimationFrame(check);
-  //   };
-
-  //   // Start the first check
-  //   animationFrameId = requestAnimationFrame(check);
-  //   console.log("detectSilenceLoop initial check scheduled.");
-  // };
-
   const detectSilenceLoop = () => {
+    // Initial log now happens *after* ref is manually set in handleStartRecording
+    console.log('Starting detectSilenceLoop. isRecordingRef is now:', isRecordingRef.current);
+
     if (!analyserRef.current) {
       console.warn("detectSilenceLoop called without analyser. Stopping.");
       return;
@@ -543,95 +454,70 @@ const SpeechToText = () => {
     const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    let animationFrameId;
+    let animationFrameId; // To potentially cancel if needed, though returning is usually enough
 
     const check = () => {
-      // Stop loop if not recording or analyser gone
+      // *** Check the ref inside the loop ***
       if (!analyserRef.current || !isRecordingRef.current) {
         console.log('Stopping detectSilenceLoop check. Analyser:', !!analyserRef.current, 'Recording:', isRecordingRef.current);
-        clearTimeout(speechStartTimerRef.current); // Ensure speech start timer is cleared
-        speechStartTimerRef.current = null;
-        return;
+        // cancelAnimationFrame(animationFrameId); // Optional: Explicitly cancel
+        return; // Stop the loop
       }
 
       analyser.getByteFrequencyData(dataArray);
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) { sum += dataArray[i]; }
       let average = sum / bufferLength;
-      let volume = average / 128.0; // Normalize to 0.0 - 1.0 (approx)
+      let volume = average / 128.0;
 
-
-      // --- Potential Speech Detected ---
+      // --- Speech Detected ---
       if (volume >= SPEECH_THRESHOLD) {
-        // Clear any active silence timer immediately
+        if (!hasSpokenRef.current) {
+          console.log('User started speaking! (from detectSilenceLoop)');
+          hasSpokenRef.current = true;
+          startNewRecordingSegment(); // Start segment recorder
+        }
         if (silenceTimerRef.current) {
           clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = null;
-          console.log('Sound detected, clearing silence timer.');
         }
+      }
+      // --- Silence Detected ---
+      else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
+        if (!silenceTimerRef.current) {
+          // ... (dynamic duration calculation - unchanged) ...
+          const latestItem = transcriptionsRef.current?.at(-1);
+          const userSetDuration = formDataRef.current.userSetDuration || 1000;
+          const minDuration = 500;
+          const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1.1) * 5, userSetDuration - minDuration) : 0;
+          let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
+          dynamicDuration = Math.round(dynamicDuration / 50) * 50;
 
-        // If not already marked as spoken and no start timer running, start the timer
-        if (!hasSpokenRef.current && !speechStartTimerRef.current) {
-          console.log(`Potential speech detected (vol: ${volume.toFixed(3)} >= ${SPEECH_THRESHOLD}). Starting ${MIN_SPEECH_DURATION_MS}ms timer...`);
-          speechStartTimerRef.current = setTimeout(() => {
-            // Check if still recording when timer fires
-            if (isRecordingRef.current) {
-              console.log(`Speech confirmed after ${MIN_SPEECH_DURATION_MS}ms delay. Starting segment.`);
-              hasSpokenRef.current = true;
-              startNewRecordingSegment(); // Start the actual MediaRecorder segment
+          console.log(`Silence detected. Setting timeout: ${dynamicDuration}ms (from detectSilenceLoop)`);
+          setFormData((prev) => ({
+            ...prev,
+            silenceDuration: dynamicDuration // Use the generated value here
+          }));
+          silenceTimerRef.current = setTimeout(() => {
+            console.log('Silence duration exceeded, stopping current segment... (from detectSilenceLoop)');
+            if (mediaRecorderRef.current?.state === 'recording') {
+              mediaRecorderRef.current.stop(); // This triggers onstop
             } else {
-              console.log(`Speech timer fired, but recording stopped. Ignoring.`);
+              console.warn("Silence timeout: Recorder wasn't running or already stopped.");
             }
-            speechStartTimerRef.current = null; // Clear timer ref
-          }, MIN_SPEECH_DURATION_MS);
-        }
-      }
-      // --- Potential Silence Detected ---
-      else { // volume < currentSpeechThreshold
-        // If a speech start timer was running, cancel it (sound didn't persist)
-        if (speechStartTimerRef.current) {
-          console.log(`Sound dropped below threshold (vol: ${volume.toFixed(3)} < ${SPEECH_THRESHOLD}) before timer fired. Cancelling start.`);
-          clearTimeout(speechStartTimerRef.current);
-          speechStartTimerRef.current = null;
-        }
-
-        // If speech *was* confirmed (hasSpokenRef is true) and now volume is below silence threshold
-        if (hasSpokenRef.current && volume < SILENCE_THRESHOLD) {
-          // Start the silence timeout *only if* one isn't already running
-          if (!silenceTimerRef.current) {
-            const latestItem = transcriptionsRef.current?.at(-1);
-            const userSetDuration = formDataRef.current.userSetDuration || 1000;
-            const minDuration = 500;
-            const reduction = latestItem?.text ? Math.min(Math.pow(latestItem.text.length, 1.1) * 5, userSetDuration - minDuration) : 0;
-            let dynamicDuration = Math.max(userSetDuration - reduction, minDuration);
-            dynamicDuration = Math.round(dynamicDuration / 50) * 50;
-
-            console.log(`Silence detected (vol: ${volume.toFixed(3)} < ${SILENCE_THRESHOLD}). Setting timeout: ${dynamicDuration}ms`);
-            // Update state for display if needed (or just use generated value)
-            // setFormData((prev) => ({ ...prev, silenceDuration: dynamicDuration })); // Optional: update state
-
-            silenceTimerRef.current = setTimeout(() => {
-              console.log('Silence duration exceeded, stopping current segment.');
-              // Check ref to prevent errors if already stopped
-              if (mediaRecorderRef.current?.state === 'recording') {
-                try { mediaRecorderRef.current.stop(); } catch (e) { console.error("Error stopping segment recorder on silence:", e); mediaRecorderRef.current = null; }
-              } else {
-                console.warn("Silence timeout: Segment recorder wasn't running or already stopped.");
-              }
-              hasSpokenRef.current = false; // Ready for next speech segment
-              silenceTimerRef.current = null; // Clear timer ref
-            }, dynamicDuration);
-          }
+            hasSpokenRef.current = false;
+            silenceTimerRef.current = null;
+          }, dynamicDuration);
         }
       }
 
-      // Continue the loop
+      // Continue the loop ONLY if still recording (checked at the top)
       animationFrameId = requestAnimationFrame(check);
     };
 
     // Start the first check
     animationFrameId = requestAnimationFrame(check);
-    console.log("detectSilenceLoop started.");
+    console.log("detectSilenceLoop initial check scheduled.");
   };
 
 
