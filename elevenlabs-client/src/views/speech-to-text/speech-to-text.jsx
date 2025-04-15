@@ -109,8 +109,8 @@ const SpeechToText = () => {
     });
 
     socket.on('transcriptions', ({ senderId, roomId, transcriptions: receivedTranscriptions }) => {
-      if (socket.id === senderId && formDataRef.current.disableSharing) return;
-      if (socket.id === senderId && room?.role !== 'owner') return;
+      //if (socket.id === senderId && formDataRef.current.disableSharing) return;
+      //if (socket.id === senderId && room?.role !== 'owner') return;
 
       console.log(`📨 Transcriptions from ${senderId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
 
@@ -603,7 +603,7 @@ const SpeechToText = () => {
       setTranscriptions(prev => {
         if (prev.some(item => item.uuid === uuid)) return prev;
         return [...prev, {
-          uuid, timestamp, status: 'processing', text: '',
+          uuid, timestamp, status: 'processing', text: null,
           audio: { mimeType: mimeType, chunks: [] },
           moderation_status: formDataRef.current.moderation ? 'pending' : 'approved'
         }];
@@ -757,17 +757,19 @@ const SpeechToText = () => {
       const data = await response.json();
       console.log(`Transcription received for ${uuid}: "${data.text}"`);
 
+      const transcriptionText = data.text.trim();
+
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, ...data, text: data.text.trim(), status: 'completed' } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed' } : item))
       );
 
       // --- Translation Handling ---
       // Assuming translation is always intended if transcription succeeds
-      if (data.text.trim() != "") {
+      if (transcriptionText != "") {
         // Proceed with translation if text exists
-        translateData(uuid, data.text);
+        translateData(uuid, transcriptionText);
       } else {
         // Transcription succeeded but text is empty, fail the translation step
         console.warn(`Setting translation to failed for ${uuid}: Transcription text is empty.`);
@@ -862,8 +864,11 @@ const SpeechToText = () => {
 
       const responseData = await response.json();
       console.log(`Translation received for ${uuid}: "${responseData.text}"`);
+
+      const translatedText = responseData.text.trim();
+
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...responseData, text: responseData.text.trim(), status: 'completed' } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed' } } : item))
       );
 
     } catch (error) {
@@ -1262,7 +1267,8 @@ const SpeechToText = () => {
                               className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                               style={{ minHeight: '1.5em' }}
                             >
-                              {item.error ? <span className='text-danger'>{item.error}</span> : cleanHtml(item.text)}
+                              {cleanHtml(item.text)}
+                              {item.error ? <span className='text-danger'>{item.error}</span> : null}
                             </div>
 
                             {/* Individual Audio Player (uses segment chunks) */}
@@ -1340,7 +1346,8 @@ const SpeechToText = () => {
                               className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                               style={{ minHeight: '1.5em' }}
                             >
-                              {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : cleanHtml(item.translate?.text)}
+                              {cleanHtml(item.translate?.text)}
+                              {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
                             </div>
 
                             {/* Moderation Controls on Hover (Owner Only) */}
