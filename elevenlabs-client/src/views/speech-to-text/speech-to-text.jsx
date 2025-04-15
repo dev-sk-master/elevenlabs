@@ -36,7 +36,7 @@ const SpeechToText = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
-  const [activeColumn, setActiveColumn] = useState(0);
+  const [activeColumn, setActiveColumn] = useState(1);
 
   // --- Refs ---
   const formDataRef = useRef(formData);
@@ -239,7 +239,13 @@ const SpeechToText = () => {
     }
     try {
       console.log("Requesting microphone access...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       console.log("Microphone access granted.");
       streamRef.current = stream;
 
@@ -1101,7 +1107,7 @@ const SpeechToText = () => {
       {/* Header Row */}
 
 
-      <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
+      {!isMobile && (<div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
         <h2 className="m-0 mb-md-0 w-100 w-md-auto text-start">Speech Recorder</h2>
         <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
           <span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">
@@ -1119,7 +1125,20 @@ const SpeechToText = () => {
             </button>
           )}
         </div>
-      </div>
+      </div>)}
+
+      {isMobile && room.role === 'owner' && (
+        <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
+          <button
+            className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
+            onClick={() => setShowSettings(!showSettings)}
+            title="Settings"
+          >
+            <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
+            {/* Hide text on xs, show on sm and up */}
+            <span className="d-none d-sm-inline ms-1">Settings</span>
+          </button></div>)}
+
 
 
       {/* Settings Panel (Owner Only) */}
@@ -1176,9 +1195,9 @@ const SpeechToText = () => {
 
       {/* Recording Controls (Owner Only) */}
       {room.role === 'owner' && (
-        <div className="text-center my-4">
+        <div className="text-center mb-1">
           <button
-            className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'} btn-lg px-5 py-3`}
+            className={`btn btn-sm ${isRecording ? 'btn-danger' : 'btn-primary'} `}
             onClick={isRecording ? handleStopRecording : handleStartRecording}
             disabled={!room}
           >
@@ -1192,7 +1211,7 @@ const SpeechToText = () => {
       {/* Combined Audio Player - Uses fullRecordingData now */}
       {/* Display only after recording stops and data is available */}
       {!isRecording && sortedTranscriptions.length > 0 && fullRecordingData.url && (
-        <div className="mb-4 p-3 border rounded bg-light">
+        <div className="mb-2 p-2 border rounded bg-light">
           <h5 className="mb-2">Full Recording</h5>
           <ReactAudioPlayer
             key={fullRecordingData.key} // Use key to force re-render when URL changes
@@ -1217,7 +1236,7 @@ const SpeechToText = () => {
       )}
 
       {/* Transcription Area */}
-      <div className="mt-4"> {/* ... Transcription list JSX ... */}
+      <div className="mt-2"> {/* ... Transcription list JSX ... */}
         {/* <h4 className="mb-3">Transcriptions {sortedTranscriptions.length > 0 ? `(${sortedTranscriptions.length})` : ''}</h4> */}
 
         {/* Placeholder when no transcriptions */}
@@ -1232,9 +1251,9 @@ const SpeechToText = () => {
           <>
             {/* Mobile Toggle Buttons */}
             {isMobile && (
-              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-3" role="tablist">
-                <button className={`nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription</button>
-                <button className={`nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation</button>
+              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist">
+                <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription</button>
+                <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation</button>
               </div>
             )}
 
@@ -1244,7 +1263,7 @@ const SpeechToText = () => {
                 className='card-body overflow-auto position-relative'
                 ref={scrollRef}
                 onScroll={handleScroll}
-                style={{ maxHeight: '55vh' }} // Adjust height as needed
+                style={{ maxHeight: room.role == 'owner' ? '72vh' : '83vh' }} // Adjust height as needed
               >
                 {/* Scroll to Bottom Button */}
                 {showScrollButtons && !autoScroll && (
