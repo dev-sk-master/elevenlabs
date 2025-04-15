@@ -34,7 +34,7 @@ const SpeechToText = () => {
     blob: null, mimeType: null, url: null, key: null
   });
   const [showSettings, setShowSettings] = useState(false);
-  const [roomFormData, setRoomFormData] = useState({ roomId: '' });
+  const [roomFormData, setRoomFormData] = useState({ roomId: '', accessRoomId: null, accessCode: null });
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
@@ -122,11 +122,11 @@ const SpeechToText = () => {
       }
     });
 
-    socket.on('transcriptions', ({ senderId, roomId, transcriptions: receivedTranscriptions }) => {
+    socket.on('transcriptions', ({ ownerId, roomId, transcriptions: receivedTranscriptions }) => {
       //if (socket.id === senderId && formDataRef.current.disableSharing) return;
       //if (socket.id === senderId && room?.role !== 'owner') return;
 
-      console.log(`📨 Transcriptions from ${senderId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
+      console.log(`📨 Transcriptions from ${ownerId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
 
       setTranscriptions(prev => {
         const map = new Map(prev.map(t => [t.uuid, t]));
@@ -145,6 +145,11 @@ const SpeechToText = () => {
         // Sort only once after processing all items
         return Array.from(map.values()).sort((a, b) => moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf() - moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf());
       });
+    });
+
+    socket.on('cleared-room', ({ roomId, userId, role }) => {
+      console.log(`Cleared room ${roomId} by ${userId} - ${role}`);
+      setTranscriptions([]);
     });
 
     socket.on('disconnect', (reason) => {
@@ -259,7 +264,7 @@ const SpeechToText = () => {
       setIsRecording(true);
       isRecordingRef.current = true;
 
-      setTranscriptions([]);
+      //setTranscriptions([]);//keep old until clear
       hasSpokenRef.current = false;
 
       // Reset full recording data
@@ -267,7 +272,7 @@ const SpeechToText = () => {
         if (prevData.url) { URL.revokeObjectURL(prevData.url); }
         return { blob: null, mimeType: null, url: null, key: null };
       });
-      fullAudioChunksRef.current = []; // Clear previous full chunks
+      //fullAudioChunksRef.current = []; // Clear previous full chunks, keep until clear
 
       // --- Setup Full Audio Recorder ---
       const options = getSupportedMimeTypeOptions();
@@ -446,6 +451,13 @@ const SpeechToText = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Dependencies: combineAudioChunks (add if it uses state directly, otherwise ref is fine)
 
+  const handleClearRecording = async () => {
+    setTranscriptions([]);
+    fullAudioChunksRef.current = [];
+    if (socket.connected && room.roomId) {
+      socket.emit('clear-room', { roomId: room.roomId, userId: formDataRef.current.userId });
+    }
+  };
 
   const setupAudioAnalysis = (stream) => {
     try {
@@ -997,12 +1009,18 @@ const SpeechToText = () => {
       socket.connect();
     }
 
-    //const newRoomId = uuidv4();
-    const newRoomId = generateFriendlyCode();
-    console.log(`Creating room: ${newRoomId}`);
-    socket.emit('create-room', { roomId: newRoomId, userId: formDataRef.current.userId });
-    //setRoom({ roomId: newRoomId, role: 'owner' });
-    //window.location.hash = newRoomId;
+    if (roomFormData.accessRoomId && roomFormData.accessCode) {
+      const accessRoomId = roomFormData.accessRoomId;
+      console.log(`Creating room: ${accessRoomId}`);
+      socket.emit('create-room', { roomId: accessRoomId, accessCode: roomFormData.accessCode, userId: formDataRef.current.userId });
+    } else {
+      //const newRoomId = uuidv4();    
+      const newRoomId = generateFriendlyCode();
+      console.log(`Creating room: ${newRoomId}`);
+      socket.emit('create-room', { roomId: newRoomId, userId: formDataRef.current.userId });
+      //setRoom({ roomId: newRoomId, role: 'owner' });
+      //window.location.hash = newRoomId;
+    }
   };
 
   const handleQuickStart = () => {
@@ -1047,7 +1065,12 @@ const SpeechToText = () => {
                     className="form-control"
                     placeholder="Enter Room ID from URL or shared link"
                     value={roomFormData.roomId}
-                    onChange={(e) => setRoomFormData({ roomId: e.target.value.trim() })}
+                    onChange={(e) =>
+                      setRoomFormData((prev) => ({
+                        ...prev,
+                        roomId: e.target.value.trim(),
+                      }))
+                    }
                   />
                 </div>
                 <button
@@ -1108,6 +1131,37 @@ const SpeechToText = () => {
                         Enable Moderation
                       </label>
                     </div>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">RoomId (Optional):</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter Room ID"
+                      value={roomFormData.accessRoomId}
+                      onChange={(e) =>
+                        setRoomFormData((prev) => ({
+                          ...prev,
+                          accessRoomId: e.target.value.trim(),
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label">Access Code:</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter Access code"
+                      value={roomFormData.accessCode}
+                      onChange={(e) =>
+                        setRoomFormData((prev) => ({
+                          ...prev,
+                          accessCode: e.target.value.trim(),
+                        }))
+                      }
+                    />
                   </div>
                 </div>
                 <button
@@ -1504,6 +1558,18 @@ const SpeechToText = () => {
                 </div>
               </div> {/* End card-body */}
             </div> {/* End card */}
+
+            {room.role === 'owner' && (
+              <div className="text-center mb-1">
+                <button
+                  className={`btn btn-sm btn-danger mt-2`}
+                  onClick={handleClearRecording}
+                  disabled={isRecording}
+                >
+                  Clear Recording
+                </button>
+              </div>)}
+
           </>
         )}
       </div>
