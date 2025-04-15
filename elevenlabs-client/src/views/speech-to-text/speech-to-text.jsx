@@ -493,6 +493,8 @@ const SpeechToText = () => {
       let average = sum / bufferLength;
       let volume = average / 128.0;
 
+      console.log('volume', volume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
+
       // --- Speech Detected ---
       if (volume >= SPEECH_THRESHOLD) {
         if (!hasSpokenRef.current) {
