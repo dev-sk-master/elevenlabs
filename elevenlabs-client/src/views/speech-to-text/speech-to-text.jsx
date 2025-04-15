@@ -752,7 +752,7 @@ const SpeechToText = () => {
             ...item,
             // Set transcription status
             status: ['reprocessing', 'completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
-            error: null, // Clear previous transcription error
+            //error: null, // Clear previous transcription error
             // Set translation status - assuming it might be needed
             // translate: {
             //   ...(item.translate || {}),
@@ -864,7 +864,7 @@ const SpeechToText = () => {
             translate: {
               ...currentTranslate,
               status: ['reprocessing', 'completed', 'failed'].includes(currentTranslate.status) ? 'reprocessing' : 'processing',
-              error: null // Clear previous error
+              //error: null // Clear previous error
             }
           };
         }
