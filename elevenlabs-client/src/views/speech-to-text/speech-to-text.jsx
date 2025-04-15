@@ -11,7 +11,9 @@ import usePrevious from '../../hooks/usePrevious';
 import ReactAudioPlayer from 'react-audio-player';
 
 // Socket connection
-const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, { /* options */ });
+const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, {
+  autoConnect: false
+});
 
 const SpeechToText = () => {
   // --- State ---
@@ -60,7 +62,6 @@ const SpeechToText = () => {
   const SPEECH_THRESHOLD = 0.05;
   const SILENCE_THRESHOLD = 0.01;
 
-
   // --- Hooks ---
   const prevTranscriptions = usePrevious(transcriptions);
 
@@ -103,7 +104,12 @@ const SpeechToText = () => {
     // ... (socket connection and event handlers - unchanged) ...
     const hash = window.location.hash.replace('#', '').trim();
 
-    socket.connect();
+    if (hash && !socket.connected) {
+      console.log("Socket not connected, connecting before joining...");
+      socket.connect();
+    }
+
+    //socket.connect();
 
     socket.on('connect', () => {
       console.log('Connected to socket server', socket.id);
@@ -184,7 +190,7 @@ const SpeechToText = () => {
   // --- Send Transcription Changes (Owner Only) ---
   useEffect(() => {
     // ... (sending logic - unchanged) ...
-    if (!room || room.role !== 'owner' || formDataRef.current.disableSharing) return;
+    if (!room || !room.roomId || room.role !== 'owner' || formDataRef.current.disableSharing) return;
     if (!prevTranscriptions || transcriptions.length === 0 && prevTranscriptions.length === 0) return;
     if (transcriptions.length === 0 && prevTranscriptions && prevTranscriptions.length > 0) return;
 
@@ -953,7 +959,11 @@ const SpeechToText = () => {
   // --- UI Event Handlers ---
   // ... (handleMouseEnter, handleMouseLeave, handleScroll, scrollToBottom, toggleColumn - unchanged) ...
   const handleMouseEnter = (index) => { setTimeout(() => { setHoveredIndex(index); }, 500) };
-  const handleMouseLeave = () => { setHoveredIndex(null); };
+  const handleMouseLeave = () => {
+    if (isMobile) return;
+    setHoveredIndex(null);
+  };
+
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
@@ -970,18 +980,36 @@ const SpeechToText = () => {
   const handleJoinRoom = (roomIdToJoin) => { /* ... (same as before) ... */
     const targetRoomId = roomIdToJoin || roomFormData.roomId;
     if (!targetRoomId) { alert("Please enter a Room ID."); return; }
+
+    if (!socket.connected) {
+      console.log("Socket not connected, connecting before joining...");
+      socket.connect();
+    }
+
     console.log(`Attempting to join room: ${targetRoomId}`);
     socket.emit('join-room', { roomId: targetRoomId, userId: formDataRef.current.userId });
     //setRoom({ roomId: targetRoomId, role: 'user' });
     window.location.hash = targetRoomId;
   };
   const handleCreateRoom = () => { /* ... (same as before) ... */
+    if (!socket.connected) {
+      console.log("Socket not connected, connecting before creating...");
+      socket.connect();
+    }
+
     //const newRoomId = uuidv4();
     const newRoomId = generateFriendlyCode();
     console.log(`Creating room: ${newRoomId}`);
     socket.emit('create-room', { roomId: newRoomId, userId: formDataRef.current.userId });
     //setRoom({ roomId: newRoomId, role: 'owner' });
     //window.location.hash = newRoomId;
+  };
+
+  const handleQuickStart = () => {
+    //const newRoomId = generateFriendlyCode();
+    setRoom({ roomId: null, role: 'owner' });
+    //window.location.hash = newRoomId;
+
   };
   const handleTextEdit = (uuid, field, newText) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => {
@@ -1008,7 +1036,7 @@ const SpeechToText = () => {
         <div className="row justify-content-center g-4">
           {/* Join Room Card */}
           <div className="col-md-5">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm h-100">
               <div className="card-body p-4">
                 <h4 className="card-title text-center mb-4">Join Existing Room</h4>
                 <div className="mb-3">
@@ -1035,7 +1063,7 @@ const SpeechToText = () => {
 
           {/* Create Room Card */}
           <div className="col-md-5">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm h-100">
               <div className="card-body p-4">
                 <h4 className="card-title text-center mb-4">Create New Room</h4>
                 {/* Settings integrated into create card */}
@@ -1092,6 +1120,50 @@ const SpeechToText = () => {
             </div>
           </div>
         </div>
+        <div className="row justify-content-center g-4">
+          <div className="col-md-5">
+            <div className="card shadow-sm mt-2">
+              <div className="card-body p-4">
+                <h4 className="card-title text-center mb-4">Quick Start</h4>
+                {/* Settings integrated into create card */}
+                <div className="row g-3 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Speech Language:</label>
+                    <select
+                      className="form-select"
+                      value={formData.language}
+                      onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                    >
+                      <option value="auto">Auto Detect</option>
+                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Translate Language:</label>
+                    <select
+                      className="form-select"
+                      value={formData.translateLanguage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}
+                    >
+                      {/* Add a "None" option maybe? */}
+                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-success w-100"
+                  onClick={handleQuickStart}
+                >
+                  Quick Start
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1110,9 +1182,9 @@ const SpeechToText = () => {
       {!isMobile && (<div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
         <h2 className="m-0 mb-md-0 w-100 w-md-auto text-start">Speech Recorder</h2>
         <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
-          <span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">
-            Room: {room.roomId} ({room.role})
-          </span>
+
+          {room.roomId ? (<span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">Room: {room.roomId} ({room.role})  </span>) : <span>&nbsp;</span>}
+
           {room.role === 'owner' && (
             <button
               className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
@@ -1251,14 +1323,14 @@ const SpeechToText = () => {
           <>
             {/* Mobile Toggle Buttons */}
             {isMobile && (
-              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist">
+              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: 'absolute', top: '5px' }}>
                 <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription</button>
                 <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation</button>
               </div>
             )}
 
             {/* Transcription Container */}
-            <div className='card shadow-sm'>
+            <div className={`card shadow-sm ${isMobile ? 'mt-5' : ''}`}>
               <div
                 className='card-body overflow-auto position-relative'
                 ref={scrollRef}
@@ -1277,7 +1349,7 @@ const SpeechToText = () => {
                   </button>
                 )}
 
-                <div className='row gx-3' onMouseLeave={handleMouseLeave}>
+                <div className='row gx-3' onMouseLeave={handleMouseLeave} >
                   {/* Transcription Column */}
                   {(activeColumn === 0 || !isMobile) && (
                     <div className="col-md-6 mb-2">
