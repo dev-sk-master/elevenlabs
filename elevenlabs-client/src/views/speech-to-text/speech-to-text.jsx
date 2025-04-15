@@ -17,8 +17,13 @@ const SpeechToText = () => {
   // --- State ---
   const [room, setRoom] = useState(null);
   const [formData, setFormData] = useState({
-    language: "auto", silenceDuration: 1000, chunksDuration: 5000,
-    translateLanguage: "en", userSetDuration: 1000, moderation: false,
+    userId: null,
+    language: "auto",
+    silenceDuration: 1000,
+    chunksDuration: 5000,
+    translateLanguage: "en",
+    userSetDuration: 1000,
+    moderation: false,
     disableSharing: false
   });
   const [isRecording, setIsRecording] = useState(false);
@@ -66,9 +71,11 @@ const SpeechToText = () => {
     if (savedFormData) {
       try {
         const parsedData = JSON.parse(savedFormData);
-        setFormData(prev => ({ ...prev, ...parsedData }));
+        setFormData(prev => ({ ...prev, ...parsedData, userId: parsedData.userId || uuidv4() }));
         // formDataRef is updated via its own useEffect
       } catch (e) { console.error("Failed to parse saved form data:", e); }
+    } else {
+      setFormData(prev => ({ ...prev, userId: uuidv4() }));
     }
 
   }, []);
@@ -140,6 +147,21 @@ const SpeechToText = () => {
 
     socket.on('error', (error) => {
       console.error('Socket error:', error);
+    });
+
+    socket.on('created-room', ({ roomId, role }) => {
+      console.log(`Created room ${roomId} as ${role}`);
+      setRoom({ roomId, role });
+      window.location.hash = roomId;
+    });
+
+    socket.on('joined-room', ({ roomId, role }) => {
+      console.log(`Joined room ${roomId} as ${role}`);
+      setRoom({ roomId, role });
+    });
+
+    socket.on('room-error', ({ error, roomId }) => {
+      alert(`Failed to join room ${roomId}: ${error}`);
     });
 
     // Cleanup on component unmount
@@ -782,8 +804,8 @@ const SpeechToText = () => {
                 ...item,
                 translate: {
                   ...(item.translate || {}),
-                  status: 'failed',
-                  error: 'Translation skipped: Empty transcription text.'
+                  //status: 'failed',
+                  //error: 'Translation skipped: Empty transcription text.'
                 }
               };
             }
@@ -805,8 +827,8 @@ const SpeechToText = () => {
               error: error.message, // Set transcription error
               translate: {
                 ...(item.translate || {}),
-                status: 'failed',
-                error: 'Translation skipped: Transcription failed.' // Set translation error
+                //status: 'failed',
+                //error: 'Translation skipped: Transcription failed.' // Set translation error
               }
             };
           }
@@ -940,17 +962,17 @@ const SpeechToText = () => {
     const targetRoomId = roomIdToJoin || roomFormData.roomId;
     if (!targetRoomId) { alert("Please enter a Room ID."); return; }
     console.log(`Attempting to join room: ${targetRoomId}`);
-    socket.emit('join-room', targetRoomId);
-    setRoom({ roomId: targetRoomId, role: 'user' });
+    socket.emit('join-room', { roomId: targetRoomId, userId: formDataRef.current.userId });
+    //setRoom({ roomId: targetRoomId, role: 'user' });
     window.location.hash = targetRoomId;
   };
   const handleCreateRoom = () => { /* ... (same as before) ... */
     //const newRoomId = uuidv4();
     const newRoomId = generateFriendlyCode();
     console.log(`Creating room: ${newRoomId}`);
-    socket.emit('create-room', newRoomId);
-    setRoom({ roomId: newRoomId, role: 'owner' });
-    window.location.hash = newRoomId;
+    socket.emit('create-room', { roomId: newRoomId, userId: formDataRef.current.userId });
+    //setRoom({ roomId: newRoomId, role: 'owner' });
+    //window.location.hash = newRoomId;
   };
   const handleTextEdit = (uuid, field, newText) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => {
@@ -1193,7 +1215,7 @@ const SpeechToText = () => {
 
       {/* Transcription Area */}
       <div className="mt-4"> {/* ... Transcription list JSX ... */}
-        <h4 className="mb-3">Transcriptions {sortedTranscriptions.length > 0 ? `(${sortedTranscriptions.length})` : ''}</h4>
+        {/* <h4 className="mb-3">Transcriptions {sortedTranscriptions.length > 0 ? `(${sortedTranscriptions.length})` : ''}</h4> */}
 
         {/* Placeholder when no transcriptions */}
         {sortedTranscriptions.length === 0 && (
