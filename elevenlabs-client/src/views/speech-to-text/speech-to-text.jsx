@@ -55,6 +55,7 @@ const SpeechToText = () => {
   const SPEECH_THRESHOLD = 0.05;
   const SILENCE_THRESHOLD = 0.01;
 
+
   // --- Hooks ---
   const prevTranscriptions = usePrevious(transcriptions);
 
