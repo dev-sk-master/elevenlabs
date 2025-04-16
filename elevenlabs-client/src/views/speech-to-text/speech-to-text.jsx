@@ -1462,11 +1462,10 @@ const SpeechToText = () => {
 
                 {room.role === 'owner' && (<>
                   {sortedTranscriptions.map((item, idx) => (
-                    <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`}>
+                    <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
                       <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
                         <div
                           key={`transcription-${item.uuid}`}
-                          onMouseEnter={() => handleMouseEnter(idx)}
                           className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
                           style={{ transition: 'background-color 0.2s ease-in-out' }}
                         >
