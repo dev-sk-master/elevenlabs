@@ -58,9 +58,14 @@ const SpeechToText = () => {
   const fullMediaRecorderRef = useRef(null);
   const fullAudioChunksRef = useRef([]);
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
+
   // --- Constants ---
   const SPEECH_THRESHOLD = 0.05;
   const SILENCE_THRESHOLD = 0.01;
+
+  const MAX_SEGMENT_DURATION_MS = 60 * 1000; // 1 minute in milliseconds
+  const maxDurationTimeoutRef = useRef(null);
+
 
   // --- Hooks ---
   const prevTranscriptions = usePrevious(transcriptions);
@@ -405,11 +410,15 @@ const SpeechToText = () => {
         // sendAudioToServer([...audioChunksRef.current], /* need mimeType */); // Might be redundant
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         mediaRecorderRef.current = null; // Clear ref
+
+        if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
       };
       mediaRecorderRef.current.onerror = (event) => {
         console.error("Chunk MediaRecorder error during stop:", event.error);
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         mediaRecorderRef.current = null; // Clear ref
+
+        if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
       };
       try {
         console.log("Calling chunk mediaRecorder.stop()...");
@@ -418,11 +427,13 @@ const SpeechToText = () => {
         console.error("Error explicitly stopping chunk MediaRecorder:", e);
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         mediaRecorderRef.current = null; // Force cleanup ref
+        if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; } // Clear max duration timeout
       }
     } else {
       console.log('Chunk MediaRecorder was not recording or already stopped.');
       if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; } // Clear timer anyway
       mediaRecorderRef.current = null; // Ensure ref is clear
+      if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; } // Clear max duration timeout
     }
 
     // --- General Cleanup ---
@@ -585,6 +596,9 @@ const SpeechToText = () => {
     recordingRef.current = { uuid, timestamp };
     audioChunksRef.current = [];
 
+    if (maxDurationTimeoutRef.current) clearTimeout(maxDurationTimeoutRef.current);
+    maxDurationTimeoutRef.current = null;
+
     const options = getSupportedMimeTypeOptions();
     // Allow undefined (browser default) but handle null (nothing supported)
     if (options === null) {
@@ -634,6 +648,7 @@ const SpeechToText = () => {
         //   sendAudioToServer([...audioChunksRef.current], mimeType);
         // }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
+        if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
       };
 
@@ -642,6 +657,7 @@ const SpeechToText = () => {
         const segmentUuid = recordingRef.current?.uuid;
         if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType); }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
+        if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
         hasSpokenRef.current = false;
         if (segmentUuid) { setTranscriptions(prev => prev.map(item => item.uuid === segmentUuid ? { ...item, status: 'failed', error: `Recorder error: ${event.error.name}` } : item)); }
@@ -673,10 +689,24 @@ const SpeechToText = () => {
         }, formDataRef.current.chunksDuration);
       }
 
+
+      // --- Setup Max Duration Timer ---
+      maxDurationTimeoutRef.current = setTimeout(() => {
+        console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
+        // Check if this specific recorder instance is still active and recording
+        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop(); // Triggers onstop
+        } else {
+          console.log("Max duration timeout: Recorder already stopped or changed.");
+        }
+        // No need to clear ref here, onstop will handle it
+      }, MAX_SEGMENT_DURATION_MS);
+
     } catch (err) {
       console.error("Error creating MediaRecorder for segment:", err);
       alert(`Failed to start recording segment: ${err.message}`);
       if (chunksTimerRef.current) clearInterval(chunksTimerRef.current); chunksTimerRef.current = null;
+      if (maxDurationTimeoutRef.current) clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null;
       // Check instance before clearing ref
       if (mediaRecorderRef.current && mediaRecorderRef.current.stream === streamRef.current) { mediaRecorderRef.current = null; }
       hasSpokenRef.current = false;
@@ -812,7 +842,7 @@ const SpeechToText = () => {
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed' } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed', error: null } : item))
       );
 
       // --- Translation Handling ---
@@ -918,7 +948,7 @@ const SpeechToText = () => {
       const translatedText = responseData.text.trim();
 
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed' } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null } } : item))
       );
 
     } catch (error) {
@@ -1015,7 +1045,7 @@ const SpeechToText = () => {
       if (!accessRoomId.trim() || !accessCode.trim()) {
         alert('Room ID and Access Code are required');
         return;
-      }      
+      }
       console.log(`Creating room: ${accessRoomId}`);
       socket.emit('create-room', { roomId: accessRoomId, accessCode: roomFormData.accessCode, userId: formDataRef.current.userId });
     } else {
