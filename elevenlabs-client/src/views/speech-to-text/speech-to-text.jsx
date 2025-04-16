@@ -34,7 +34,7 @@ const SpeechToText = () => {
     blob: null, mimeType: null, url: null, key: null
   });
   const [showSettings, setShowSettings] = useState(false);
-  const [roomFormData, setRoomFormData] = useState({ roomId: '', accessRoomId: null, accessCode: null });
+  const [roomFormData, setRoomFormData] = useState({ roomId: '', accessRoomId: '', accessCode: '' });
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
@@ -1009,8 +1009,13 @@ const SpeechToText = () => {
       socket.connect();
     }
 
-    if (roomFormData.accessRoomId && roomFormData.accessCode) {
-      const accessRoomId = roomFormData.accessRoomId;
+    if (roomFormData.accessRoomId || roomFormData.accessCode) {
+      const { accessRoomId, accessCode } = roomFormData;
+
+      if (!accessRoomId.trim() || !accessCode.trim()) {
+        alert('Room ID and Access Code are required');
+        return;
+      }      
       console.log(`Creating room: ${accessRoomId}`);
       socket.emit('create-room', { roomId: accessRoomId, accessCode: roomFormData.accessCode, userId: formDataRef.current.userId });
     } else {
