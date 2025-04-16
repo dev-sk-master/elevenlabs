@@ -1435,7 +1435,7 @@ const SpeechToText = () => {
 
 
             {/* Transcription Container */}
-            <div className={`card shadow-sm ${isMobile ? 'mt-5' : ''}`} onMouseLeave={handleMouseLeave}>
+            <div className={`card shadow-sm ${isMobile ? 'mt-5' : ''}`} >
               <div
                 className='card-body overflow-auto position-relative'
                 ref={scrollRef}
