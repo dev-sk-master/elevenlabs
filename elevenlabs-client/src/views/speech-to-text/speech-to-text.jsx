@@ -1427,7 +1427,7 @@ const SpeechToText = () => {
           <>
             {/* Mobile Toggle Buttons */}
             {isMobile && (
-              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: 'absolute', top: room.role == 'owner' ? '82px' : '5px' }}>
+              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: !showSettings ? 'absolute' : 'inherit', top: room.role == 'owner' ? '82px' : '5px' }}>
                 <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription ({formData.language})</button>
                 <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation ({formData.translateLanguage})</button>
               </div>
