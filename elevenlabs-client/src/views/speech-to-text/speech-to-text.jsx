@@ -26,7 +26,8 @@ const SpeechToText = () => {
     translateLanguage: "en",
     userSetDuration: 1000,
     moderation: false,
-    disableSharing: false
+    disableSharing: false,
+    showInterimResults: false
   });
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
@@ -65,6 +66,7 @@ const SpeechToText = () => {
 
   const MAX_SEGMENT_DURATION_MS = 60 * 1000; // 1 minute in milliseconds
   const maxDurationTimeoutRef = useRef(null);
+  const isInterimResultsRef = useRef(false);
 
 
   // --- Hooks ---
@@ -422,6 +424,7 @@ const SpeechToText = () => {
       };
       try {
         console.log("Calling chunk mediaRecorder.stop()...");
+        isInterimResultsRef.current = false;
         mediaRecorderRef.current.stop();
       } catch (e) {
         console.error("Error explicitly stopping chunk MediaRecorder:", e);
@@ -635,8 +638,8 @@ const SpeechToText = () => {
           //       ? { ...item, audio: { ...(item.audio || {}), chunks: [...audioChunksRef.current], mimeType: mimeType } } // Store effective mimeType
           //       : item
           //   )
-          // );
-          sendAudioToServer(audioChunksRef.current, mimeType);
+          // );          
+          sendAudioToServer(audioChunksRef.current, mimeType, isInterimResultsRef.current);
           //}
         }
       };
@@ -655,7 +658,7 @@ const SpeechToText = () => {
       mediaRecorder.onerror = (event) => {
         console.error("MediaRecorder segment error:", event.error);
         const segmentUuid = recordingRef.current?.uuid;
-        if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType); }
+        if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType, isInterimResultsRef.current); }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
@@ -675,12 +678,18 @@ const SpeechToText = () => {
         }];
       });
 
-      if (formDataRef.current.chunksDuration > 0) {
+      if (formDataRef.current.chunksDuration > 0 && formDataRef.current.showInterimResults) {
         if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
         chunksTimerRef.current = setInterval(() => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
             //  console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
-            try { mediaRecorder.requestData(); } catch (e) { console.error("Error requesting data:", e) }
+            isInterimResultsRef.current = true;
+            try {
+              mediaRecorder.requestData();
+            } catch (e) {
+              console.error("Error requesting data:", e)
+              isInterimResultsRef.current = false;
+            }
           } else {
             //  console.log("Chunk interval: Recorder no longer recording, clearing interval.");
             if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
@@ -695,6 +704,7 @@ const SpeechToText = () => {
         console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
         // Check if this specific recorder instance is still active and recording
         if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+          isInterimResultsRef.current = false;
           mediaRecorder.stop(); // Triggers onstop
         } else {
           console.log("Max duration timeout: Recorder already stopped or changed.");
@@ -791,7 +801,7 @@ const SpeechToText = () => {
   //   }
   // };
 
-  const sendAudioToServer = async (chunks, mimeType) => {
+  const sendAudioToServer = async (chunks, mimeType, isInterim) => {
     console.log('sendAudioToServer chunks:', chunks)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
@@ -799,7 +809,7 @@ const SpeechToText = () => {
     const { uuid } = recordingRef.current;
     const audioBlob = new Blob(chunks, { type: mimeType });
 
-    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}`);
+    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}`);
 
     // Set initial processing/reprocessing status for both transcription and translation
     setTranscriptions(prev =>
@@ -835,15 +845,16 @@ const SpeechToText = () => {
       }
 
       const data = await response.json();
-      console.log(`Transcription received for ${uuid}: "${data.text}"`);
+      console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}`);
 
       const transcriptionText = data.text.trim();
 
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed', error: null } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed', error: null, isInterim } : item))
       );
+
 
       // --- Translation Handling ---
       // Assuming translation is always intended if transcription succeeds
@@ -897,7 +908,7 @@ const SpeechToText = () => {
 
   // The translateData function remains unchanged
   // The check for translateLanguage inside it still provides a safety layer
-  const translateData = async (uuid, textToTranslate) => {
+  const translateData = async (uuid, textToTranslate, isInterim) => {
     // Keep this check for robustness within translateData itself
     if (!textToTranslate || !formDataRef.current.translateLanguage) {
       console.warn(`translateData skipped for ${uuid}: Empty text or missing target language.`);
@@ -908,7 +919,7 @@ const SpeechToText = () => {
       return;
     }
 
-    console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}`);
+    console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}, Interim: ${isInterim}`);
 
     // Set translation status (handles reprocessing automatically)
     setTranscriptions(prev =>
@@ -948,7 +959,7 @@ const SpeechToText = () => {
       const translatedText = responseData.text.trim();
 
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null, isInterim } } : item))
       );
 
     } catch (error) {
@@ -1334,7 +1345,7 @@ const SpeechToText = () => {
                 </div>
                 <div>
                   <label className="form-label">Chunk Interval (ms): <small>(Send data every X ms, 0=off)</small></label>
-                  <input type="number" className="form-control" value={formData.chunksDuration} onChange={(e) => setFormData(prev => ({ ...prev, chunksDuration: Number(e.target.value) || 0 }))} min="0" step="500" />
+                  <input type="number" className="form-control" value={formData.chunksDuration} onChange={(e) => setFormData(prev => ({ ...prev, chunksDuration: Number(e.target.value) || 0 }))} min="0" step="500" disabled={!formData.showInterimResults} />
                 </div>
               </div>
               {/* Additional Options */}
@@ -1347,6 +1358,10 @@ const SpeechToText = () => {
                 <div className="form-check form-switch">
                   <input className="form-check-input" type="checkbox" role="switch" id="disableSharingSwitch" checked={formData.disableSharing} onChange={(e) => setFormData(prev => ({ ...prev, disableSharing: e.target.checked }))} />
                   <label className="form-check-label" htmlFor="disableSharingSwitch">Disable Sharing Transcriptions</label>
+                </div>
+                <div className="form-check form-switch">
+                  <input className="form-check-input" type="checkbox" role="switch" id="showInterimResultsSwitch" checked={formData.showInterimResults} onChange={(e) => setFormData(prev => ({ ...prev, showInterimResults: e.target.checked }))} />
+                  <label className="form-check-label" htmlFor="showInterimResultsSwitch">Show interim results</label>
                 </div>
               </div>
             </div>
@@ -1506,7 +1521,7 @@ const SpeechToText = () => {
                             <span
                               key={`transcription-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
-                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''}`}
+                              className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
                               style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
                             >
                               {cleanHtml(item.text)}
@@ -1579,7 +1594,7 @@ const SpeechToText = () => {
                             <span
                               key={`translation-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
-                              className={`pe-1 ${hoveredIndex === idx ? 'bg-info' : ''}`}
+                              className={`pe-1 ${hoveredIndex === idx ? item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
                               style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
                             >
                               {cleanHtml(item.translate?.text)}
