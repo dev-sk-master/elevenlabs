@@ -119,6 +119,12 @@ const SpeechToText = () => {
     isRecordingRef.current = isRecording;
     // This log confirms the sync happens, but might be *after* the loop starts
     // console.log("useEffect sync: isRecording state updated, ref is now:", isRecordingRef.current);
+    if (!isRecording && transcriptionsRef.current.length > 0) {
+      console.log('Remove empty audio transcription items')
+      setTranscriptions(prev =>
+        prev.filter(item => item.audio?.chunks.length > 0)
+      );
+    }
   }, [isRecording]);
 
   // --- Socket IO Setup & Room Management ---
@@ -401,7 +407,10 @@ const SpeechToText = () => {
     if (!isRecordingRef.current && !mediaRecorderRef.current && !streamRef.current && !audioContextRef.current) {
       console.log("Stop recording called, but nothing seems active. Aborting cleanup.");
       // Ensure UI state is correct if somehow out of sync
-      if (isRecording) setIsRecording(false); // Ensure state matches reality if needed
+      if (isRecording) {
+        setIsRecording(false); // Ensure state matches reality if needed
+        isRecordingRef.current = false;
+      }
       return;
     }
 
