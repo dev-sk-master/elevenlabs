@@ -1432,7 +1432,7 @@ const SpeechToText = () => {
           <>
             {/* Mobile Toggle Buttons */}
             {isMobile && (
-              <div className="d-md-none d-flex justify-content-center nav nav-pills mb-2" role="tablist" style={{ position: !showSettings ? 'absolute' : 'inherit', top: room.role == 'owner' ? '82px' : '5px' }}>
+              <div className="d-flex justify-content-center nav nav-pills mb-2" role="tablist" /*style={{ position: !showSettings ? 'absolute' : 'inherit', top: room.role == 'owner' ? '82px' : '5px' }}*/>
                 <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription ({formData.language})</button>
                 <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation ({formData.translateLanguage})</button>
               </div>
@@ -1440,7 +1440,7 @@ const SpeechToText = () => {
 
 
             {/* Transcription Container */}
-            <div className={`card shadow-sm ${isMobile ? 'mt-5' : ''}`} >
+            <div className={`card shadow-sm `} >{/*${isMobile ? 'mt-5' : ''}*/}
               <div
                 className='card-body overflow-auto position-relative'
                 ref={scrollRef}
@@ -1467,7 +1467,7 @@ const SpeechToText = () => {
 
                 {room.role === 'owner' && (<>
                   {sortedTranscriptions.map((item, idx) => (
-                    <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} />
+                    <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} />
                     // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
                     //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
                     //     <div
