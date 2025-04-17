@@ -606,6 +606,9 @@ const SpeechToText = () => {
     if (maxDurationTimeoutRef.current) clearTimeout(maxDurationTimeoutRef.current);
     maxDurationTimeoutRef.current = null;
 
+    isInterimResultsRef.current = false;
+    isMaxSegmentDurationCutoff.current = false;
+
     const options = getSupportedMimeTypeOptions();
     // Allow undefined (browser default) but handle null (nothing supported)
     if (options === null) {
