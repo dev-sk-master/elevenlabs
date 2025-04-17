@@ -614,7 +614,7 @@ const SpeechToText = () => {
       console.warn("Cannot start new segment: No stream, already recording, or isRecordingRef is false.", { hasStream: !!streamRef.current, recorderState: mediaRecorderRef.current?.state, isRecording: isRecordingRef.current });
       return;
     }
-    console.log("Starting new recording segment...");
+    console.log("Starting new recording segment...", moment().format('YYYY-MM-DD HH:mm:ss.SSS'));
 
     const uuid = uuidv4();
     const timestamp = moment().format('YYYY-MM-DD HH:mm:ss.SSS');
@@ -669,7 +669,7 @@ const SpeechToText = () => {
           //       : item
           //   )
           // );          
-          sendAudioToServer(audioChunksRef.current, mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
+          //sendAudioToServer(audioChunksRef.current, mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
           //}
         }
       };
@@ -677,9 +677,14 @@ const SpeechToText = () => {
       mediaRecorder.onstop = () => {
         const segmentUuid = recordingRef.current?.uuid;
         console.log(`Segment ${segmentUuid} stopped. Final chunks: ${audioChunksRef.current.length}`);
-        // if (audioChunksRef.current.length > 0) {
-        //   sendAudioToServer([...audioChunksRef.current], mimeType);
-        // }
+        if (audioChunksRef.current.length > 0) {
+          console.log('mediaRecorder.onstop: ', moment().format('YYYY-MM-DD HH:mm:ss.SSS'))
+          sendAudioToServer([...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
+          //Start next segment immediately to avoid audio breaks
+          if (isRecordingRef.current) {
+            startNewRecordingSegment()
+          }
+        }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
