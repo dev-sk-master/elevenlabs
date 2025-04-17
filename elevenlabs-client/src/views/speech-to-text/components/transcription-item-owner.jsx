@@ -55,6 +55,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
                             />;
                         })()}
+                        MimeType: {item.audio.mimeType}
                     </div>
                     {/* )} */}
                 </div>
