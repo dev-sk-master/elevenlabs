@@ -68,6 +68,7 @@ const SpeechToText = () => {
   const MAX_SEGMENT_DURATION_MS = 60 * 1000; // 1 minute in milliseconds
   const maxDurationTimeoutRef = useRef(null);
   const isInterimResultsRef = useRef(false);
+  const isMaxSegmentDurationCutoff = useRef(false);
 
 
   // --- Hooks ---
@@ -426,6 +427,7 @@ const SpeechToText = () => {
       try {
         console.log("Calling chunk mediaRecorder.stop()...");
         isInterimResultsRef.current = false;
+        isMaxSegmentDurationCutoff.current = false;
         mediaRecorderRef.current.stop();
       } catch (e) {
         console.error("Error explicitly stopping chunk MediaRecorder:", e);
@@ -542,6 +544,7 @@ const SpeechToText = () => {
           startNewRecordingSegment(); // Start segment recorder
         }
         if (silenceTimerRef.current) {
+          console.log('Clear silenceTimerRef (from detectSilenceLoop)');
           clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = null;
         }
@@ -640,7 +643,7 @@ const SpeechToText = () => {
           //       : item
           //   )
           // );          
-          sendAudioToServer(audioChunksRef.current, mimeType, isInterimResultsRef.current);
+          sendAudioToServer(audioChunksRef.current, mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
           //}
         }
       };
@@ -659,7 +662,7 @@ const SpeechToText = () => {
       mediaRecorder.onerror = (event) => {
         console.error("MediaRecorder segment error:", event.error);
         const segmentUuid = recordingRef.current?.uuid;
-        if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType, isInterimResultsRef.current); }
+        if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current }); }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
@@ -685,6 +688,7 @@ const SpeechToText = () => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
             //  console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
             isInterimResultsRef.current = true;
+            isMaxSegmentDurationCutoff.current = false;
             try {
               mediaRecorder.requestData();
             } catch (e) {
@@ -706,6 +710,7 @@ const SpeechToText = () => {
         // Check if this specific recorder instance is still active and recording
         if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
           isInterimResultsRef.current = false;
+          isMaxSegmentDurationCutoff.current = true;
           mediaRecorder.stop(); // Triggers onstop
         } else {
           console.log("Max duration timeout: Recorder already stopped or changed.");
@@ -802,7 +807,8 @@ const SpeechToText = () => {
   //   }
   // };
 
-  const sendAudioToServer = async (chunks, mimeType, isInterim) => {
+  const sendAudioToServer = async (chunks, mimeType, options) => {
+    let { isInterim, segmentCutoff } = options;
     console.log('sendAudioToServer chunks:', chunks)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
@@ -810,7 +816,7 @@ const SpeechToText = () => {
     const { uuid } = recordingRef.current;
     const audioBlob = new Blob(chunks, { type: mimeType });
 
-    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}`);
+    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
     // Set initial processing/reprocessing status for both transcription and translation
     setTranscriptions(prev =>
@@ -827,7 +833,9 @@ const SpeechToText = () => {
             //   status: ['completed', 'failed'].includes(item.translate?.status) ? 'reprocessing' : 'processing',
             //   error: null // Clear previous translation error
             // },
-            audio: { ...(item.audio || {}), chunks: chunks, mimeType: mimeType }
+            audio: { ...(item.audio || {}), chunks: chunks, mimeType: mimeType },
+            isInterim,
+            segmentCutoff
           };
         }
         return item;
@@ -846,14 +854,14 @@ const SpeechToText = () => {
       }
 
       const data = await response.json();
-      console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}`);
+      console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
       const transcriptionText = data.text.trim();
 
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed', error: null, isInterim } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, text: transcriptionText, status: 'completed', error: null } : item))
       );
 
 
@@ -861,7 +869,7 @@ const SpeechToText = () => {
       // Assuming translation is always intended if transcription succeeds
       if (transcriptionText != "") {
         // Proceed with translation if text exists
-        translateData(uuid, transcriptionText);
+        translateData(uuid, transcriptionText, { isInterim, segmentCutoff });
       } else {
         // Transcription succeeded but text is empty, fail the translation step
         console.warn(`Setting translation to failed for ${uuid}: Transcription text is empty.`);
@@ -909,7 +917,8 @@ const SpeechToText = () => {
 
   // The translateData function remains unchanged
   // The check for translateLanguage inside it still provides a safety layer
-  const translateData = async (uuid, textToTranslate, isInterim) => {
+  const translateData = async (uuid, textToTranslate, options) => {
+    let { isInterim, segmentCutoff } = options;
     // Keep this check for robustness within translateData itself
     if (!textToTranslate || !formDataRef.current.translateLanguage) {
       console.warn(`translateData skipped for ${uuid}: Empty text or missing target language.`);
@@ -920,7 +929,7 @@ const SpeechToText = () => {
       return;
     }
 
-    console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}, Interim: ${isInterim}`);
+    console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
     // Set translation status (handles reprocessing automatically)
     setTranscriptions(prev =>
@@ -934,6 +943,8 @@ const SpeechToText = () => {
               ...currentTranslate,
               status: ['reprocessing', 'completed', 'failed'].includes(currentTranslate.status) ? 'reprocessing' : 'processing',
               //error: null // Clear previous error
+              isInterim,
+              segmentCutoff
             }
           };
         }
@@ -960,7 +971,7 @@ const SpeechToText = () => {
       const translatedText = responseData.text.trim();
 
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null, isInterim } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null } } : item))
       );
 
     } catch (error) {

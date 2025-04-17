@@ -17,6 +17,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
                         {/* Status Indicators */}
                         <span>
+                            {item.segmentCutoff && <span className="badge bg-warning text-dark me-1">1m Cutoff</span>}
                             {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
                             {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
                             {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
@@ -70,6 +71,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
                             {/* Status Indicators */}
                             <span>
+                                {item.translate?.segmentCutoff && <span className="badge bg-warning text-dark me-1">1m Cutoff</span>}
                                 {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
                                 {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
                                 {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
