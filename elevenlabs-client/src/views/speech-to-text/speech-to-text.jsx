@@ -1000,7 +1000,7 @@ const SpeechToText = () => {
   const getSupportedMimeTypeOptions = () => { /* ... (same as before) ... */
     const types = [
       'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg',
-      'audio/mp4', // Less commonly supported for recording
+      //'audio/mp4', // Less commonly supported for recording
     ];
     for (const type of types) { if (MediaRecorder.isTypeSupported(type)) return { mimeType: type }; }
     console.warn("No preferred MIME type supported. Trying default (might be audio/webm).");
