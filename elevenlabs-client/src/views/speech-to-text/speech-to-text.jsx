@@ -10,6 +10,7 @@ import isEqual from 'lodash/isEqual';
 import usePrevious from '../../hooks/usePrevious';
 import ReactAudioPlayer from 'react-audio-player';
 import TranscriptionItemOwner from './components/transcription-item-owner';
+import { Helmet } from 'react-helmet-async';
 // import { MediaRecorder, register } from 'extendable-media-recorder';
 // import { connect } from 'extendable-media-recorder-wav-encoder';
 
@@ -1245,175 +1246,180 @@ const SpeechToText = () => {
   // Room Selection/Creation UI
   if (!room) {
     return ( /* ... (same JSX as before) ... */
-      <div className="container mt-5">
-        <div className="row justify-content-center g-4">
-          {/* Join Room Card */}
-          <div className="col-md-5">
-            <div className="card shadow-sm h-100">
-              <div className="card-body p-4">
-                <h4 className="card-title text-center mb-4">Join Existing Room</h4>
-                <div className="mb-3">
-                  <label htmlFor="roomIdInput" className="form-label">Room ID</label>
-                  <input
-                    id="roomIdInput"
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Room ID from URL or shared link"
-                    value={roomFormData.roomId}
-                    onChange={(e) =>
-                      setRoomFormData((prev) => ({
-                        ...prev,
-                        roomId: e.target.value.trim(),
-                      }))
-                    }
-                  />
+      <>
+        <Helmet>
+          <title>Paalam</title>
+        </Helmet>
+        <div className="container mt-5">
+          <div className="row justify-content-center g-4">
+            {/* Join Room Card */}
+            <div className="col-md-5">
+              <div className="card shadow-sm h-100">
+                <div className="card-body p-4">
+                  <h4 className="card-title text-center mb-4">Join Existing Room</h4>
+                  <div className="mb-3">
+                    <label htmlFor="roomIdInput" className="form-label">Room ID</label>
+                    <input
+                      id="roomIdInput"
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter Room ID from URL or shared link"
+                      value={roomFormData.roomId}
+                      onChange={(e) =>
+                        setRoomFormData((prev) => ({
+                          ...prev,
+                          roomId: e.target.value.trim(),
+                        }))
+                      }
+                    />
+                  </div>
+                  <button
+                    className="btn btn-primary w-100"
+                    onClick={() => handleJoinRoom()}
+                    disabled={!roomFormData.roomId.trim()}
+                  >
+                    Join Room
+                  </button>
                 </div>
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={() => handleJoinRoom()}
-                  disabled={!roomFormData.roomId.trim()}
-                >
-                  Join Room
-                </button>
               </div>
             </div>
-          </div>
 
-          {/* Create Room Card */}
-          <div className="col-md-5">
-            <div className="card shadow-sm h-100">
-              <div className="card-body p-4">
-                <h4 className="card-title text-center mb-4">Create New Room</h4>
-                {/* Settings integrated into create card */}
-                <div className="row g-3 mb-3">
-                  <div className="col-md-6">
-                    <label className="form-label">Speech Language:</label>
-                    <select
-                      className="form-select"
-                      value={formData.language}
-                      onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                    >
-                      <option value="auto">Auto Detect</option>
-                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Translate Language:</label>
-                    <select
-                      className="form-select"
-                      value={formData.translateLanguage}
-                      onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}
-                    >
-                      {/* Add a "None" option maybe? */}
-                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <div className="form-check form-switch d-flex justify-content-center align-items-center pt-2">
+            {/* Create Room Card */}
+            <div className="col-md-5">
+              <div className="card shadow-sm h-100">
+                <div className="card-body p-4">
+                  <h4 className="card-title text-center mb-4">Create New Room</h4>
+                  {/* Settings integrated into create card */}
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Speech Language:</label>
+                      <select
+                        className="form-select"
+                        value={formData.language}
+                        onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                      >
+                        <option value="auto">Auto Detect</option>
+                        {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Translate Language:</label>
+                      <select
+                        className="form-select"
+                        value={formData.translateLanguage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}
+                      >
+                        {/* Add a "None" option maybe? */}
+                        {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-12">
+                      <div className="form-check form-switch d-flex justify-content-center align-items-center pt-2">
+                        <input
+                          className="form-check-input me-2"
+                          type="checkbox"
+                          role="switch"
+                          id="moderationSwitchCreate"
+                          checked={formData.moderation}
+                          onChange={(e) => setFormData(prev => ({ ...prev, moderation: e.target.checked }))}
+                        />
+                        <label className="form-check-label" htmlFor="moderationSwitchCreate">
+                          Enable Moderation
+                        </label>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">RoomId (Optional):</label>
                       <input
-                        className="form-check-input me-2"
-                        type="checkbox"
-                        role="switch"
-                        id="moderationSwitchCreate"
-                        checked={formData.moderation}
-                        onChange={(e) => setFormData(prev => ({ ...prev, moderation: e.target.checked }))}
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Room ID"
+                        value={roomFormData.accessRoomId}
+                        onChange={(e) =>
+                          setRoomFormData((prev) => ({
+                            ...prev,
+                            accessRoomId: e.target.value.trim(),
+                          }))
+                        }
                       />
-                      <label className="form-check-label" htmlFor="moderationSwitchCreate">
-                        Enable Moderation
-                      </label>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Access Code:</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Access code"
+                        value={roomFormData.accessCode}
+                        onChange={(e) =>
+                          setRoomFormData((prev) => ({
+                            ...prev,
+                            accessCode: e.target.value.trim(),
+                          }))
+                        }
+                      />
                     </div>
                   </div>
-                  <div className="col-md-6">
-                    <label className="form-label">RoomId (Optional):</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Enter Room ID"
-                      value={roomFormData.accessRoomId}
-                      onChange={(e) =>
-                        setRoomFormData((prev) => ({
-                          ...prev,
-                          accessRoomId: e.target.value.trim(),
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label">Access Code:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Enter Access code"
-                      value={roomFormData.accessCode}
-                      onChange={(e) =>
-                        setRoomFormData((prev) => ({
-                          ...prev,
-                          accessCode: e.target.value.trim(),
-                        }))
-                      }
-                    />
-                  </div>
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={handleCreateRoom}
+                  >
+                    Create Room & Start
+                  </button>
                 </div>
-                <button
-                  className="btn btn-success w-100"
-                  onClick={handleCreateRoom}
-                >
-                  Create Room & Start
-                </button>
+              </div>
+            </div>
+          </div>
+          <div className="row justify-content-center g-4">
+            <div className="col-md-5">
+              <div className="card shadow-sm mt-2">
+                <div className="card-body p-4">
+                  <h4 className="card-title text-center mb-4">Quick Start</h4>
+                  {/* Settings integrated into create card */}
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Speech Language:</label>
+                      <select
+                        className="form-select"
+                        value={formData.language}
+                        onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                      >
+                        <option value="auto">Auto Detect</option>
+                        {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Translate Language:</label>
+                      <select
+                        className="form-select"
+                        value={formData.translateLanguage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}
+                      >
+                        {/* Add a "None" option maybe? */}
+                        {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={handleQuickStart}
+                  >
+                    Quick Start
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="row justify-content-center g-4">
-          <div className="col-md-5">
-            <div className="card shadow-sm mt-2">
-              <div className="card-body p-4">
-                <h4 className="card-title text-center mb-4">Quick Start</h4>
-                {/* Settings integrated into create card */}
-                <div className="row g-3 mb-3">
-                  <div className="col-md-6">
-                    <label className="form-label">Speech Language:</label>
-                    <select
-                      className="form-select"
-                      value={formData.language}
-                      onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                    >
-                      <option value="auto">Auto Detect</option>
-                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Translate Language:</label>
-                    <select
-                      className="form-select"
-                      value={formData.translateLanguage}
-                      onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}
-                    >
-                      {/* Add a "None" option maybe? */}
-                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <button
-                  className="btn btn-success w-100"
-                  onClick={handleQuickStart}
-                >
-                  Quick Start
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </>
     );
   }
 
@@ -1424,17 +1430,36 @@ const SpeechToText = () => {
   );
 
   return ( /* ... (Rest of the JSX, unchanged from previous version) ... */
-    <div className="container-fluid mt-3 mb-5">
-      {/* Header Row */}
+    <>
+      <Helmet>
+        <title>Paalam</title>
+      </Helmet>
+      <div className="container-fluid mt-3 mb-5">
+        {/* Header Row */}
 
 
-      {!isMobile && (<div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
-        <h2 className="m-0 mb-md-0 w-100 w-md-auto text-start">Speech Recorder</h2>
-        <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
+        {!isMobile && (<div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3 p-2 bg-light border rounded">
+          <h2 className="m-0 mb-md-0 w-100 w-md-auto text-start">Paalam</h2>
+          <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
 
-          {room.roomId ? (<span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">Room: {room.roomId} ({room.role})  </span>) : <span>&nbsp;</span>}
+            {room.roomId ? (<span className="badge bg-secondary mb-2 mb-sm-0 me-sm-3">Room: {room.roomId}</span>) : <span>&nbsp;</span>}
 
-          {room.role === 'owner' && (
+            {room.role === 'owner' && (
+              <button
+                className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setShowSettings(!showSettings)}
+                title="Settings"
+              >
+                <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
+                {/* Hide text on xs, show on sm and up */}
+                <span className="d-none d-sm-inline ms-1">Settings</span>
+              </button>
+            )}
+          </div>
+        </div>)}
+
+        {isMobile && room.role === 'owner' && (
+          <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
             <button
               className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
               onClick={() => setShowSettings(!showSettings)}
@@ -1443,331 +1468,317 @@ const SpeechToText = () => {
               <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
               {/* Hide text on xs, show on sm and up */}
               <span className="d-none d-sm-inline ms-1">Settings</span>
-            </button>
-          )}
-        </div>
-      </div>)}
-
-      {isMobile && room.role === 'owner' && (
-        <div className='d-flex flex-column flex-sm-row align-items-end align-items-sm-center justify-content-sm-between w-100 w-md-auto mt-2 mt-md-0'>
-          <button
-            className={`btn btn-sm ${showSettings ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setShowSettings(!showSettings)}
-            title="Settings"
-          >
-            <i className={`bi bi-gear${showSettings ? '-fill' : ''}`}></i>
-            {/* Hide text on xs, show on sm and up */}
-            <span className="d-none d-sm-inline ms-1">Settings</span>
-          </button></div>)}
+            </button></div>)}
 
 
 
-      {/* Settings Panel (Owner Only) */}
-      {room.role === 'owner' && showSettings && (
-        <div className="card mb-4 shadow-sm">
-          <div className="card-header"> <h4 className="m-0">Settings</h4> </div>
-          <div className="card-body"> {/* ... Settings form JSX ... */}
-            <div className="row g-3">
-              {/* Language Settings */}
-              <div className="col-md-4 border-end">
-                <h5>Language</h5>
-                <div className="mb-3">
-                  <label className="form-label">Speech Language:</label>
-                  <select className="form-select" value={formData.language} onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}>
-                    <option value="auto">Auto Detect</option>
-                    {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (<option key={lang.code} value={lang.code}>{lang.name}</option>))}
-                  </select>
+        {/* Settings Panel (Owner Only) */}
+        {room.role === 'owner' && showSettings && (
+          <div className="card mb-4 shadow-sm">
+            <div className="card-header"> <h4 className="m-0">Settings</h4> </div>
+            <div className="card-body"> {/* ... Settings form JSX ... */}
+              <div className="row g-3">
+                {/* Language Settings */}
+                <div className="col-md-4 border-end">
+                  <h5>Language</h5>
+                  <div className="mb-3">
+                    <label className="form-label">Speech Language:</label>
+                    <select className="form-select" value={formData.language} onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}>
+                      <option value="auto">Auto Detect</option>
+                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (<option key={lang.code} value={lang.code}>{lang.name}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Translate Language:</label>
+                    <select className="form-select" value={formData.translateLanguage} onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}>
+                      {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (<option key={lang.code} value={lang.code}>{lang.name}</option>))}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="form-label">Translate Language:</label>
-                  <select className="form-select" value={formData.translateLanguage} onChange={(e) => setFormData(prev => ({ ...prev, translateLanguage: e.target.value }))}>
-                    {languages.sort((a, b) => a.name.localeCompare(b.name)).map(lang => (<option key={lang.code} value={lang.code}>{lang.name}</option>))}
-                  </select>
+                {/* Timing Controls */}
+                <div className="col-md-4 border-end">
+                  <h5>Timing</h5>
+                  <div className="mb-3">
+                    <label className="form-label">Pause Duration (ms): <small>(Timeout after silence)</small></label>
+                    <input type="number" className="form-control" value={formData.userSetDuration} onChange={(e) => setFormData(prev => ({ ...prev, userSetDuration: Number(e.target.value) || 1000 }))} min="500" step="100" />
+                  </div>
+                  <div>
+                    <label className="form-label">Chunk Interval (ms): <small>(Send data every X ms, 0=off)</small></label>
+                    <input type="number" className="form-control" value={formData.chunksDuration} onChange={(e) => setFormData(prev => ({ ...prev, chunksDuration: Number(e.target.value) || 0 }))} min="0" step="500" disabled={!formData.showInterimResults} />
+                  </div>
                 </div>
-              </div>
-              {/* Timing Controls */}
-              <div className="col-md-4 border-end">
-                <h5>Timing</h5>
-                <div className="mb-3">
-                  <label className="form-label">Pause Duration (ms): <small>(Timeout after silence)</small></label>
-                  <input type="number" className="form-control" value={formData.userSetDuration} onChange={(e) => setFormData(prev => ({ ...prev, userSetDuration: Number(e.target.value) || 1000 }))} min="500" step="100" />
-                </div>
-                <div>
-                  <label className="form-label">Chunk Interval (ms): <small>(Send data every X ms, 0=off)</small></label>
-                  <input type="number" className="form-control" value={formData.chunksDuration} onChange={(e) => setFormData(prev => ({ ...prev, chunksDuration: Number(e.target.value) || 0 }))} min="0" step="500" disabled={!formData.showInterimResults} />
-                </div>
-              </div>
-              {/* Additional Options */}
-              <div className="col-md-4">
-                <h5>Options</h5>
-                <div className="form-check form-switch mb-2">
-                  <input className="form-check-input" type="checkbox" role="switch" id="moderationSwitch" checked={formData.moderation} onChange={(e) => setFormData(prev => ({ ...prev, moderation: e.target.checked }))} />
-                  <label className="form-check-label" htmlFor="moderationSwitch">Enable Moderation</label>
-                </div>
-                <div className="form-check form-switch">
-                  <input className="form-check-input" type="checkbox" role="switch" id="disableSharingSwitch" checked={formData.disableSharing} onChange={(e) => setFormData(prev => ({ ...prev, disableSharing: e.target.checked }))} />
-                  <label className="form-check-label" htmlFor="disableSharingSwitch">Disable Sharing Transcriptions</label>
-                </div>
-                <div className="form-check form-switch">
-                  <input className="form-check-input" type="checkbox" role="switch" id="showInterimResultsSwitch" checked={formData.showInterimResults} onChange={(e) => setFormData(prev => ({ ...prev, showInterimResults: e.target.checked }))} />
-                  <label className="form-check-label" htmlFor="showInterimResultsSwitch">Show interim results</label>
+                {/* Additional Options */}
+                <div className="col-md-4">
+                  <h5>Options</h5>
+                  <div className="form-check form-switch mb-2">
+                    <input className="form-check-input" type="checkbox" role="switch" id="moderationSwitch" checked={formData.moderation} onChange={(e) => setFormData(prev => ({ ...prev, moderation: e.target.checked }))} />
+                    <label className="form-check-label" htmlFor="moderationSwitch">Enable Moderation</label>
+                  </div>
+                  <div className="form-check form-switch">
+                    <input className="form-check-input" type="checkbox" role="switch" id="disableSharingSwitch" checked={formData.disableSharing} onChange={(e) => setFormData(prev => ({ ...prev, disableSharing: e.target.checked }))} />
+                    <label className="form-check-label" htmlFor="disableSharingSwitch">Disable Sharing Transcriptions</label>
+                  </div>
+                  <div className="form-check form-switch">
+                    <input className="form-check-input" type="checkbox" role="switch" id="showInterimResultsSwitch" checked={formData.showInterimResults} onChange={(e) => setFormData(prev => ({ ...prev, showInterimResults: e.target.checked }))} />
+                    <label className="form-check-label" htmlFor="showInterimResultsSwitch">Show interim results</label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Recording Controls (Owner Only) */}
-      {room.role === 'owner' && (
-        <div className="text-center mb-1">
-          <button
-            className={`btn btn-sm ${isRecording ? 'btn-danger' : 'btn-primary'} `}
-            onClick={isRecording ? handleStopRecording : handleStartRecording}
-            disabled={!room}
-          >
-            <i className={`bi ${isRecording ? 'bi-stop-circle-fill' : 'bi-mic-fill'} me-2`}></i>
-            {isRecording ? 'Stop Recording' : 'Start Recording'}
-          </button>
-          {isRecording && <div className="spinner-grow spinner-grow-sm text-danger ms-2" role="status"><span className="visually-hidden">Recording...</span></div>}
-        </div>
-      )}
-
-      {/* Combined Audio Player - Uses fullRecordingData now */}
-      {/* Display only after recording stops and data is available */}
-      {!isRecording && sortedTranscriptions.length > 0 && fullRecordingData.url && (
-        <div className="mb-2 p-2 border rounded bg-light">
-          <h5 className="mb-2">Full Recording</h5>
-          <ReactAudioPlayer
-            key={fullRecordingData.key} // Use key to force re-render when URL changes
-            src={fullRecordingData.url}
-            controls
-            preload="metadata"
-            style={{ width: '100%' }}
-            onError={(e) => console.error("Error playing full recording:", e)}
-          />
-          {/* Download Link */}
-          {fullRecordingData.blob && (
-            <a
-              href={fullRecordingData.url}
-              // Construct filename using stored mimeType
-              download={`full_recording_${room.roomId}_${Date.now()}.${fullRecordingData.mimeType?.split(';')[0]?.split('/')[1] || 'webm'}`}
-              className="btn btn-sm btn-outline-secondary mt-2"
+        {/* Recording Controls (Owner Only) */}
+        {room.role === 'owner' && (
+          <div className="text-center mb-1">
+            <button
+              className={`btn btn-sm ${isRecording ? 'btn-danger' : 'btn-primary'} `}
+              onClick={isRecording ? handleStopRecording : handleStartRecording}
+              disabled={!room}
             >
-              <i className="bi bi-download me-1"></i> Download Full Audio
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* Transcription Area */}
-      <div className="mt-2"> {/* ... Transcription list JSX ... */}
-        {/* <h4 className="mb-3">Transcriptions {sortedTranscriptions.length > 0 ? `(${sortedTranscriptions.length})` : ''}</h4> */}
-
-        {/* Placeholder when no transcriptions */}
-        {sortedTranscriptions.length === 0 && (
-          <div className="text-center text-muted p-4 border rounded">
-            {room.role === 'owner' ? (isRecording ? "Listening..." : "Start recording to see transcriptions.") : "Waiting for transcriptions from the owner..."}
+              <i className={`bi ${isRecording ? 'bi-stop-circle-fill' : 'bi-mic-fill'} me-2`}></i>
+              {isRecording ? 'Stop Recording' : 'Start Recording'}
+            </button>
+            {isRecording && <div className="spinner-grow spinner-grow-sm text-danger ms-2" role="status"><span className="visually-hidden">Recording...</span></div>}
           </div>
         )}
 
-        {/* Transcription List */}
-        {sortedTranscriptions.length > 0 && (
-          <>
-            {/* Mobile Toggle Buttons */}
-            {isMobile && (
-              <div className="d-flex justify-content-center nav nav-pills mb-2" role="tablist" /*style={{ position: !showSettings ? 'absolute' : 'inherit', top: room.role == 'owner' ? '82px' : '5px' }}*/>
-                <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription ({formData.language})</button>
-                <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation ({formData.translateLanguage})</button>
-              </div>
-            )}
-
-
-            {/* Transcription Container */}
-            <div className={`card shadow-sm `} >{/*${isMobile ? 'mt-5' : ''}*/}
-              <div
-                className='card-body overflow-auto position-relative'
-                ref={scrollRef}
-                onScroll={handleScroll}
-                style={{ maxHeight: room.role == 'owner' ? '72vh' : '83vh' }} // Adjust height as needed
+        {/* Combined Audio Player - Uses fullRecordingData now */}
+        {/* Display only after recording stops and data is available */}
+        {!isRecording && sortedTranscriptions.length > 0 && fullRecordingData.url && (
+          <div className="mb-2 p-2 border rounded bg-light">
+            <h5 className="mb-2">Full Recording</h5>
+            <ReactAudioPlayer
+              key={fullRecordingData.key} // Use key to force re-render when URL changes
+              src={fullRecordingData.url}
+              controls
+              preload="metadata"
+              style={{ width: '100%' }}
+              onError={(e) => console.error("Error playing full recording:", e)}
+            />
+            {/* Download Link */}
+            {fullRecordingData.blob && (
+              <a
+                href={fullRecordingData.url}
+                // Construct filename using stored mimeType
+                download={`full_recording_${room.roomId}_${Date.now()}.${fullRecordingData.mimeType?.split(';')[0]?.split('/')[1] || 'webm'}`}
+                className="btn btn-sm btn-outline-secondary mt-2"
               >
-
-                {!isMobile && (
-                  <div className="row gx-3 mb-2" >
-                    <div className="col-md-6 d-flex"><h5 className='text-center text-muted mb-2 '>Transcription ({formData.language})</h5></div>
-                    <div className="col-md-6 d-flex"> <h5 className='text-center text-muted mb-2 '>Translation ({formData.translateLanguage})</h5></div>
-                  </div>)}
-
-                {room.role === 'owner' && (<>
-                  {sortedTranscriptions.map((item, idx) => (
-                    <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} handleTextEdit={handleTextEdit} />
-                    // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
-                    //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                    //     <div
-                    //       key={`transcription-${item.uuid}`}
-                    //       className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
-                    //       style={{ transition: 'background-color 0.2s ease-in-out' }}
-                    //     >
-
-                    //       <div className='d-flex justify-content-between align-items-center mb-1'>
-                    //         <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
-                    //         {/* Status Indicators */}
-                    //         <span>
-                    //           {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
-                    //           {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
-                    //           {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
-                    //           {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
-                    //           {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
-                    //         </span>
-                    //       </div>
-
-
-                    //       <div
-                    //         contentEditable={room.role === 'owner' && item.status == 'completed'}
-                    //         suppressContentEditableWarning={true}
-                    //         onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.textContent || '') }}
-                    //         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                    //         style={{ minHeight: '1.5em' }}
-                    //       >
-                    //         {cleanHtml(item.text)}
-                    //         {item.error ? <span className='text-danger'>{item.error}</span> : null}
-                    //       </div>
-
-                    //       {/* Individual Audio Player (uses segment chunks) */}
-                    //       {/* {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && ( */}
-                    //         <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
-                    //           {(() => {
-                    //             const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
-                    //             if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
-                    //             return <ReactAudioPlayer
-                    //               key={audioUrl}
-                    //               src={audioUrl}
-                    //               controls
-                    //               preload="none" // Don't preload segment previews
-                    //               style={{ height: '40px', width: '100%' }}
-                    //               onError={(e) => console.error("Individual audio error", e)}
-                    //             //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                    //             //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                    //             />;
-                    //           })()}
-                    //         </div>
-                    //       {/* )} */}
-                    //     </div>
-                    //   </div>
-                    //   <div className={`col-md-6 d-flex ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                    //     <div
-                    //       key={`translation-${item.uuid}`}
-                    //       onMouseEnter={() => handleMouseEnter(idx)}
-                    //       className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
-                    //       style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
-                    //     >
-                    //       {room.role === 'owner' && (
-                    //         <div className='d-flex justify-content-between align-items-center mb-1'>
-                    //           <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
-                    //           {/* Status Indicators */}
-                    //           <span>
-                    //             {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
-                    //             {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
-                    //             {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
-                    //             {item.translate?.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
-                    //           </span>
-                    //         </div>
-                    //       )}
-
-                    //       <div
-                    //         contentEditable={room.role === 'owner' && item.translate?.status === 'completed'}
-                    //         suppressContentEditableWarning={true}
-                    //         onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.textContent || '') }}
-                    //         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                    //         style={{ minHeight: '1.5em' }}
-                    //       >
-                    //         {cleanHtml(item.translate?.text)}
-                    //         {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
-                    //       </div>
-
-                    //       {/* Moderation Controls on Hover (Owner Only) */}
-                    //       {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
-                    //       <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
-                    //         <small className='text-muted me-2'>Moderation:</small>
-                    //         <div className="btn-group btn-group-sm" role="group">
-                    //           <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
-                    //           <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
-                    //           {/* {item.moderation_status !== 'pending' && (
-                    //               <button type="button" className="btn btn-outline-secondary" onClick={() => handleModeration(item.uuid, 'pending')}>Reset</button>
-                    //             )} */}
-                    //         </div>
-                    //       </div>
-                    //       {/*} )}*/}
-                    //     </div>
-                    //   </div>
-                    // </div>
-                  ))}
-                </>)}
-
-                {room.role === 'user' && (<>
-                  <div className="row gx-3 mb-2">
-                    <div className={`col-md-6 ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                      {sortedTranscriptions.map((item, idx) => (<>
-                        {item.text != "" && !item.error && (
-                          <span
-                            key={`transcription-${item.uuid}`}
-                            onMouseEnter={() => handleMouseEnter(idx)}
-                            className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
-                            style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
-                          >
-                            {cleanHtml(item.text)}
-                          </span>
-                        )}
-                      </>
-                      ))}
-                    </div>
-                    <div className={`col-md-6 ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                      {sortedTranscriptions.map((item, idx) => (<>
-                        {item.translate?.text != "" && !item.translate?.error && (
-                          <span
-                            key={`translation-${item.uuid}`}
-                            onMouseEnter={() => handleMouseEnter(idx)}
-                            className={`pe-1 ${hoveredIndex === idx ? item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
-                            style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
-                          >
-                            {cleanHtml(item.translate?.text)}
-                          </span>
-                        )}
-                      </>))}
-                    </div>
-                  </div>
-                </>)}
-
-                {/* Scroll to Bottom Button */}
-                {showScrollButtons && !autoScroll && (
-                  <button
-                    className="btn btn-sm btn-light rounded-circle position-sticky shadow-sm"
-                    onClick={scrollToBottom}
-                    title="Scroll to bottom"
-                    style={{ bottom: '5%', left: '100%', transform: 'translate(-50%, -50%)', zIndex: 1050 }}
-                  >
-                    <i className="bi bi-arrow-down"></i>
-                  </button>
-                )}
-
-              </div> {/* End card-body */}
-            </div> {/* End card */}
-
-            {room.role === 'owner' && (
-              <div className="text-center mb-1">
-                <button
-                  className={`btn btn-sm btn-danger mt-2`}
-                  onClick={handleClearRecording}
-                  disabled={isRecording}
-                >
-                  Clear Recording
-                </button>
-              </div>)}
-
-          </>
+                <i className="bi bi-download me-1"></i> Download Full Audio
+              </a>
+            )}
+          </div>
         )}
+
+        {/* Transcription Area */}
+        <div className="mt-2"> {/* ... Transcription list JSX ... */}
+          {/* <h4 className="mb-3">Transcriptions {sortedTranscriptions.length > 0 ? `(${sortedTranscriptions.length})` : ''}</h4> */}
+
+          {/* Placeholder when no transcriptions */}
+          {sortedTranscriptions.length === 0 && (
+            <div className="text-center text-muted p-4 border rounded">
+              {room.role === 'owner' ? (isRecording ? "Listening..." : "Start recording to see transcriptions.") : "Waiting for transcriptions from the owner..."}
+            </div>
+          )}
+
+          {/* Transcription List */}
+          {sortedTranscriptions.length > 0 && (
+            <>
+              {/* Mobile Toggle Buttons */}
+              {isMobile && (
+                <div className="d-flex justify-content-center nav nav-pills mb-2" role="tablist" /*style={{ position: !showSettings ? 'absolute' : 'inherit', top: room.role == 'owner' ? '82px' : '5px' }}*/>
+                  <button className={`btn-sm nav-link ${activeColumn === 0 ? 'active' : ''}`} onClick={() => toggleColumn('prev')} role="tab">Transcription ({formData.language})</button>
+                  <button className={`btn-sm nav-link ${activeColumn === 1 ? 'active' : ''}`} onClick={() => toggleColumn('next')} role="tab">Translation ({formData.translateLanguage})</button>
+                </div>
+              )}
+
+
+              {/* Transcription Container */}
+              <div className={`card shadow-sm `} >{/*${isMobile ? 'mt-5' : ''}*/}
+                <div
+                  className='card-body overflow-auto position-relative'
+                  ref={scrollRef}
+                  onScroll={handleScroll}
+                  style={{ maxHeight: room.role == 'owner' ? '72vh' : '83vh' }} // Adjust height as needed
+                >
+
+                  {!isMobile && (
+                    <div className="row gx-3 mb-2" >
+                      <div className="col-md-6 d-flex"><h5 className='text-center text-muted mb-2 '>Transcription ({formData.language})</h5></div>
+                      <div className="col-md-6 d-flex"> <h5 className='text-center text-muted mb-2 '>Translation ({formData.translateLanguage})</h5></div>
+                    </div>)}
+
+                  {room.role === 'owner' && (<>
+                    {sortedTranscriptions.map((item, idx) => (
+                      <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} handleTextEdit={handleTextEdit} />
+                      // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
+                      //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
+                      //     <div
+                      //       key={`transcription-${item.uuid}`}
+                      //       className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
+                      //       style={{ transition: 'background-color 0.2s ease-in-out' }}
+                      //     >
+
+                      //       <div className='d-flex justify-content-between align-items-center mb-1'>
+                      //         <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
+                      //         {/* Status Indicators */}
+                      //         <span>
+                      //           {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
+                      //           {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
+                      //           {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
+                      //           {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
+                      //           {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
+                      //         </span>
+                      //       </div>
+
+
+                      //       <div
+                      //         contentEditable={room.role === 'owner' && item.status == 'completed'}
+                      //         suppressContentEditableWarning={true}
+                      //         onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.textContent || '') }}
+                      //         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
+                      //         style={{ minHeight: '1.5em' }}
+                      //       >
+                      //         {cleanHtml(item.text)}
+                      //         {item.error ? <span className='text-danger'>{item.error}</span> : null}
+                      //       </div>
+
+                      //       {/* Individual Audio Player (uses segment chunks) */}
+                      //       {/* {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && ( */}
+                      //         <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
+                      //           {(() => {
+                      //             const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
+                      //             if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
+                      //             return <ReactAudioPlayer
+                      //               key={audioUrl}
+                      //               src={audioUrl}
+                      //               controls
+                      //               preload="none" // Don't preload segment previews
+                      //               style={{ height: '40px', width: '100%' }}
+                      //               onError={(e) => console.error("Individual audio error", e)}
+                      //             //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                      //             //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
+                      //             />;
+                      //           })()}
+                      //         </div>
+                      //       {/* )} */}
+                      //     </div>
+                      //   </div>
+                      //   <div className={`col-md-6 d-flex ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
+                      //     <div
+                      //       key={`translation-${item.uuid}`}
+                      //       onMouseEnter={() => handleMouseEnter(idx)}
+                      //       className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.translate?.status === 'failed' ? 'border-danger' : ''}`}
+                      //       style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                      //     >
+                      //       {room.role === 'owner' && (
+                      //         <div className='d-flex justify-content-between align-items-center mb-1'>
+                      //           <small className="text-muted">{moment(item.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').format('HH:mm:ss')}</small>
+                      //           {/* Status Indicators */}
+                      //           <span>
+                      //             {!item.translate && <span className="badge bg-info me-1">Pending...</span>}
+                      //             {item.translate?.status === 'processing' && <span className="badge bg-info me-1">Translating...</span>}
+                      //             {item.translate?.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Retranslating...</span>}
+                      //             {item.translate?.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
+                      //           </span>
+                      //         </div>
+                      //       )}
+
+                      //       <div
+                      //         contentEditable={room.role === 'owner' && item.translate?.status === 'completed'}
+                      //         suppressContentEditableWarning={true}
+                      //         onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.textContent || '') }}
+                      //         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
+                      //         style={{ minHeight: '1.5em' }}
+                      //       >
+                      //         {cleanHtml(item.translate?.text)}
+                      //         {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
+                      //       </div>
+
+                      //       {/* Moderation Controls on Hover (Owner Only) */}
+                      //       {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
+                      //       <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
+                      //         <small className='text-muted me-2'>Moderation:</small>
+                      //         <div className="btn-group btn-group-sm" role="group">
+                      //           <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
+                      //           <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
+                      //           {/* {item.moderation_status !== 'pending' && (
+                      //               <button type="button" className="btn btn-outline-secondary" onClick={() => handleModeration(item.uuid, 'pending')}>Reset</button>
+                      //             )} */}
+                      //         </div>
+                      //       </div>
+                      //       {/*} )}*/}
+                      //     </div>
+                      //   </div>
+                      // </div>
+                    ))}
+                  </>)}
+
+                  {room.role === 'user' && (<>
+                    <div className="row gx-3 mb-2">
+                      <div className={`col-md-6 ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
+                        {sortedTranscriptions.map((item, idx) => (<>
+                          {item.text != "" && !item.error && (
+                            <span
+                              key={`transcription-${item.uuid}`}
+                              onMouseEnter={() => handleMouseEnter(idx)}
+                              className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                            >
+                              {cleanHtml(item.text)}
+                            </span>
+                          )}
+                        </>
+                        ))}
+                      </div>
+                      <div className={`col-md-6 ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
+                        {sortedTranscriptions.map((item, idx) => (<>
+                          {item.translate?.text != "" && !item.translate?.error && (
+                            <span
+                              key={`translation-${item.uuid}`}
+                              onMouseEnter={() => handleMouseEnter(idx)}
+                              className={`pe-1 ${hoveredIndex === idx ? item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                            >
+                              {cleanHtml(item.translate?.text)}
+                            </span>
+                          )}
+                        </>))}
+                      </div>
+                    </div>
+                  </>)}
+
+                  {/* Scroll to Bottom Button */}
+                  {showScrollButtons && !autoScroll && (
+                    <button
+                      className="btn btn-sm btn-light rounded-circle position-sticky shadow-sm"
+                      onClick={scrollToBottom}
+                      title="Scroll to bottom"
+                      style={{ bottom: '5%', left: '100%', transform: 'translate(-50%, -50%)', zIndex: 1050 }}
+                    >
+                      <i className="bi bi-arrow-down"></i>
+                    </button>
+                  )}
+
+                </div> {/* End card-body */}
+              </div> {/* End card */}
+
+              {room.role === 'owner' && (
+                <div className="text-center mb-1">
+                  <button
+                    className={`btn btn-sm btn-danger mt-2`}
+                    onClick={handleClearRecording}
+                    disabled={isRecording}
+                  >
+                    Clear Recording
+                  </button>
+                </div>)}
+
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
