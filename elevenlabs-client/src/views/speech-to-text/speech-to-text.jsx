@@ -10,8 +10,8 @@ import isEqual from 'lodash/isEqual';
 import usePrevious from '../../hooks/usePrevious';
 import ReactAudioPlayer from 'react-audio-player';
 import TranscriptionItemOwner from './components/transcription-item-owner';
-import { MediaRecorder, register } from 'extendable-media-recorder';
-import { connect } from 'extendable-media-recorder-wav-encoder';
+// import { MediaRecorder, register } from 'extendable-media-recorder';
+// import { connect } from 'extendable-media-recorder-wav-encoder';
 
 // Socket connection
 const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, {
@@ -64,7 +64,7 @@ const SpeechToText = () => {
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
 
   // --- Constants ---
-  const SPEECH_THRESHOLD = 0.05;
+  const SPEECH_THRESHOLD = 0.02;
   const SILENCE_THRESHOLD = 0.01;
 
   const MAX_SEGMENT_DURATION_MS = 60 * 1000; // 1 minute in milliseconds
@@ -72,16 +72,16 @@ const SpeechToText = () => {
   const isInterimResultsRef = useRef(false);
   const isMaxSegmentDurationCutoff = useRef(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        await register(await connect());
-        console.log("WAV encoder registered");
-      } catch (err) {
-        console.error("Failed to register WAV encoder", err);
-      }
-    })();
-  }, []);
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       await register(await connect());
+  //       console.log("WAV encoder registered");
+  //     } catch (err) {
+  //       console.error("Failed to register WAV encoder", err);
+  //     }
+  //   })();
+  // }, []);
 
 
   // --- Hooks ---
@@ -225,8 +225,8 @@ const SpeechToText = () => {
     const changedTranscriptions = [];
 
     for (const current of transcriptions) {
-      if (current.moderation_status !== 'approved') continue;
-      if (current.status !== 'completed') continue;//only send if the transcription is completed
+      //if (current.moderation_status !== 'approved') continue;
+      //if (current.status !== 'completed') continue;//only send if the transcription is completed
       const prev = prevMap.get(current.uuid);
       if (!prev || !isEqual(prev.text, current.text) || !isEqual(prev.translate?.text, current.translate?.text) || prev.moderation_status !== current.moderation_status) {
         const { /*audio,*/ ...rest } = current;
@@ -1048,9 +1048,9 @@ const SpeechToText = () => {
   // --- UI Event Handlers ---
   // ... (handleMouseEnter, handleMouseLeave, handleScroll, scrollToBottom, toggleColumn - unchanged) ...
   const handleMouseEnter = useCallback((index) => {
-    setTimeout(() => {
-      setHoveredIndex(index);
-    }, 500)
+    // setTimeout(() => {
+    setHoveredIndex(index);
+    //}, 500)
   }, []);
   const handleMouseLeave = useCallback(() => {
     if (isMobile) return;
@@ -1118,8 +1118,9 @@ const SpeechToText = () => {
   const handleTextEdit = useCallback((uuid, field, newText) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => {
       if (item.uuid !== uuid) return item;
-      if (field === 'transcription') { if (item.text !== newText && formDataRef.current.translateLanguage) { translateData(uuid, newText); } return { ...item, text: newText }; }
-      if (field === 'translation') { return { ...item, translate: { ...(item.translate || {}), text: newText } }; } return item;
+      if (field === 'transcription') { return { ...item, text: newText }; }
+      if (field === 'translation') { return { ...item, translate: { ...(item.translate || {}), text: newText } }; }
+      return item;
     }));
   }, []);
   const handleModeration = useCallback((uuid, newStatus) => { /* ... (same as before) ... */
