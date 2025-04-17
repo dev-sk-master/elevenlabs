@@ -297,28 +297,28 @@ const SpeechToText = () => {
       //fullAudioChunksRef.current = []; // Clear previous full chunks, keep until clear
 
       // --- Setup Full Audio Recorder ---
-      // const options = getSupportedMimeTypeOptions();
-      // if (options === null) {
-      //   throw new Error('No supported audio format found for recording.');
-      // }
-      // // Determine the actual mimeType being used
-      // let effectiveMimeType = 'application/octet-stream'; // Fallback
-      // if (options?.mimeType) {
-      //   effectiveMimeType = options.mimeType;
-      // } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-      //   effectiveMimeType = 'audio/webm;codecs=opus';
-      // } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-      //   effectiveMimeType = 'audio/webm';
-      // }
-      // fullAudioMimeTypeRef.current = effectiveMimeType; // Store for later use
-      // console.log(`Setting up full recorder with type: ${effectiveMimeType}`);
-
-      let mimeType = 'audio/wav';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // Fallback or notify the user
-        alert('WAV recording is not supported in this browser.');
+      const options = getSupportedMimeTypeOptions();
+      if (options === null) {
+        throw new Error('No supported audio format found for recording.');
       }
-      fullAudioMimeTypeRef.current = mimeType;
+      // Determine the actual mimeType being used
+      let mimeType = 'application/octet-stream'; // Fallback
+      if (options?.mimeType) {
+        mimeType = options.mimeType;
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      }
+      fullAudioMimeTypeRef.current = mimeType; // Store for later use
+      console.log(`Setting up full recorder with type: ${mimeType}`);
+
+      // let mimeType = 'audio/wav';
+      // if (!MediaRecorder.isTypeSupported(mimeType)) {
+      //   // Fallback or notify the user
+      //   alert('WAV recording is not supported in this browser.');
+      // }
+      // fullAudioMimeTypeRef.current = mimeType;
 
       try {
         const fullRecorder = new MediaRecorder(stream, { mimeType: mimeType });
@@ -627,30 +627,30 @@ const SpeechToText = () => {
     isInterimResultsRef.current = false;
     isMaxSegmentDurationCutoff.current = false;
 
-    // const options = getSupportedMimeTypeOptions();
-    // // Allow undefined (browser default) but handle null (nothing supported)
-    // if (options === null) {
-    //   console.error('No supported MIME type found for MediaRecorder.');
-    //   alert('Your browser does not support common audio recording formats.');
-    //   handleStopRecording(); // Stop overall recording
-    //   return;
-    // }
-    // // Determine the actual mimeType being used (could be browser default)
-    // let mimeType = 'application/octet-stream'; // Fallback
-    // if (options?.mimeType) {
-    //   mimeType = options.mimeType;
-    // } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-    //   mimeType = 'audio/webm;codecs=opus';
-    // } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-    //   mimeType = 'audio/webm';
-    // }
-    // console.log(`Attempting to start segment recorder with options:`, options, `Effective mimeType: ${mimeType}`);
-
-    let mimeType = 'audio/wav';
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      // Fallback or notify the user
-      alert('WAV recording is not supported in this browser.');
+    const options = getSupportedMimeTypeOptions();
+    // Allow undefined (browser default) but handle null (nothing supported)
+    if (options === null) {
+      console.error('No supported MIME type found for MediaRecorder.');
+      alert('Your browser does not support common audio recording formats.');
+      handleStopRecording(); // Stop overall recording
+      return;
     }
+    // Determine the actual mimeType being used (could be browser default)
+    let mimeType = 'application/octet-stream'; // Fallback
+    if (options?.mimeType) {
+      mimeType = options.mimeType;
+    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      mimeType = 'audio/webm';
+    }
+    console.log(`Attempting to start segment recorder with options:`, options, `Effective mimeType: ${mimeType}`);
+
+    // let mimeType = 'audio/wav';
+    // if (!MediaRecorder.isTypeSupported(mimeType)) {
+    //   // Fallback or notify the user
+    //   alert('WAV recording is not supported in this browser.');
+    // }
 
     try {
       const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: mimeType }); // Pass options object or undefined
@@ -730,17 +730,17 @@ const SpeechToText = () => {
 
 
       // --- Setup Max Duration Timer ---
-      maxDurationTimeoutRef.current = setTimeout(() => {
-        console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
-        // Check if this specific recorder instance is still active and recording
-        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
-          isMaxSegmentDurationCutoff.current = true;
-          mediaRecorder.stop(); // Triggers onstop
-        } else {
-          console.log("Max duration timeout: Recorder already stopped or changed.");
-        }
-        // No need to clear ref here, onstop will handle it
-      }, MAX_SEGMENT_DURATION_MS);
+      // maxDurationTimeoutRef.current = setTimeout(() => {
+      //   console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
+      //   // Check if this specific recorder instance is still active and recording
+      //   if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+      //     isMaxSegmentDurationCutoff.current = true;
+      //     mediaRecorder.stop(); // Triggers onstop
+      //   } else {
+      //     console.log("Max duration timeout: Recorder already stopped or changed.");
+      //   }
+      //   // No need to clear ref here, onstop will handle it
+      // }, MAX_SEGMENT_DURATION_MS);
 
     } catch (err) {
       console.error("Error creating MediaRecorder for segment:", err);
