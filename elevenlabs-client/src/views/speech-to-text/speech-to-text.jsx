@@ -688,7 +688,7 @@ const SpeechToText = () => {
         chunksTimerRef.current = setInterval(() => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
             //  console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
-            isInterimResultsRef.current = true;            
+            isInterimResultsRef.current = true;
             try {
               mediaRecorder.requestData();
             } catch (e) {
@@ -708,7 +708,7 @@ const SpeechToText = () => {
       maxDurationTimeoutRef.current = setTimeout(() => {
         console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
         // Check if this specific recorder instance is still active and recording
-        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {          
+        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
           isMaxSegmentDurationCutoff.current = true;
           mediaRecorder.stop(); // Triggers onstop
         } else {
@@ -1457,17 +1457,6 @@ const SpeechToText = () => {
                 onScroll={handleScroll}
                 style={{ maxHeight: room.role == 'owner' ? '72vh' : '83vh' }} // Adjust height as needed
               >
-                {/* Scroll to Bottom Button */}
-                {showScrollButtons && !autoScroll && (
-                  <button
-                    className="btn btn-sm btn-light rounded-circle position-sticky shadow-sm"
-                    onClick={scrollToBottom}
-                    title="Scroll to bottom"
-                    style={{ top: '90%', left: '100%', transform: 'translate(-50%, -50%)', zIndex: 1050 }}
-                  >
-                    <i className="bi bi-arrow-down"></i>
-                  </button>
-                )}
 
                 {!isMobile && (
                   <div className="row gx-3 mb-2" >
@@ -1615,6 +1604,17 @@ const SpeechToText = () => {
                   </div>
                 </>)}
 
+                {/* Scroll to Bottom Button */}
+                {showScrollButtons && !autoScroll && (
+                  <button
+                    className="btn btn-sm btn-light rounded-circle position-sticky shadow-sm"
+                    onClick={scrollToBottom}
+                    title="Scroll to bottom"
+                    style={{ bottom: '5%', left: '100%', transform: 'translate(-50%, -50%)', zIndex: 1050 }}
+                  >
+                    <i className="bi bi-arrow-down"></i>
+                  </button>
+                )}
 
               </div> {/* End card-body */}
             </div> {/* End card */}
