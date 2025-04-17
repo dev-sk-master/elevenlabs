@@ -426,8 +426,6 @@ const SpeechToText = () => {
       };
       try {
         console.log("Calling chunk mediaRecorder.stop()...");
-        isInterimResultsRef.current = false;
-        isMaxSegmentDurationCutoff.current = false;
         mediaRecorderRef.current.stop();
       } catch (e) {
         console.error("Error explicitly stopping chunk MediaRecorder:", e);
@@ -690,8 +688,7 @@ const SpeechToText = () => {
         chunksTimerRef.current = setInterval(() => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
             //  console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
-            isInterimResultsRef.current = true;
-            isMaxSegmentDurationCutoff.current = false;
+            isInterimResultsRef.current = true;            
             try {
               mediaRecorder.requestData();
             } catch (e) {
@@ -711,8 +708,7 @@ const SpeechToText = () => {
       maxDurationTimeoutRef.current = setTimeout(() => {
         console.log(`Max duration (${MAX_SEGMENT_DURATION_MS / 1000}s) reached for segment ${uuid}. Stopping.`);
         // Check if this specific recorder instance is still active and recording
-        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
-          isInterimResultsRef.current = false;
+        if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {          
           isMaxSegmentDurationCutoff.current = true;
           mediaRecorder.stop(); // Triggers onstop
         } else {
