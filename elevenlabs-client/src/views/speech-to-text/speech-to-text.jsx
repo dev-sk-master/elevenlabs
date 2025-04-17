@@ -1115,13 +1115,13 @@ const SpeechToText = () => {
     //window.location.hash = newRoomId;
 
   };
-  const handleTextEdit = (uuid, field, newText) => { /* ... (same as before) ... */
+  const handleTextEdit = useCallback((uuid, field, newText) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => {
       if (item.uuid !== uuid) return item;
       if (field === 'transcription') { if (item.text !== newText && formDataRef.current.translateLanguage) { translateData(uuid, newText); } return { ...item, text: newText }; }
       if (field === 'translation') { return { ...item, translate: { ...(item.translate || {}), text: newText } }; } return item;
     }));
-  };
+  }, []);
   const handleModeration = useCallback((uuid, newStatus) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => item.uuid === uuid ? { ...item, moderation_status: newStatus } : item));
   }, []);
@@ -1491,7 +1491,7 @@ const SpeechToText = () => {
 
                 {room.role === 'owner' && (<>
                   {sortedTranscriptions.map((item, idx) => (
-                    <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} />
+                    <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} handleTextEdit={handleTextEdit} />
                     // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
                     //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
                     //     <div
