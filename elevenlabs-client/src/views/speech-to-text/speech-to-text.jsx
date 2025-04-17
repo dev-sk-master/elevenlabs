@@ -470,6 +470,22 @@ const SpeechToText = () => {
     }
 
     // --- General Cleanup ---
+    // Close AudioContext *before* stopping stream tracks, just in case
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      console.log("Closing AudioContext...");
+      audioContextRef.current.close()
+        .then(() => { console.log("AudioContext closed successfully."); })
+        .catch(e => console.warn("Error closing AudioContext:", e))
+        .finally(() => { // Ensure refs are cleared even if close fails
+          audioContextRef.current = null;
+          analyserRef.current = null;
+        });
+    } else {
+      console.log("No active AudioContext to close or already closed.");
+      audioContextRef.current = null; // Ensure it's null if it wasn't active
+      analyserRef.current = null;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -503,36 +519,114 @@ const SpeechToText = () => {
     }
   };
 
+  // const setupAudioAnalysis = (stream) => {
+  //   try {
+  //     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+  //       console.log("Creating new AudioContext...");
+  //       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+  //     }
+  //     if (audioContextRef.current.state === 'suspended') {
+  //       console.log("Resuming suspended AudioContext...");
+  //       audioContextRef.current.resume().catch(e => console.error("Error resuming AudioContext", e));
+  //     }
+
+  //     const source = audioContextRef.current.createMediaStreamSource(stream);
+  //     analyserRef.current = audioContextRef.current.createAnalyser();
+  //     analyserRef.current.fftSize = 2048;
+  //     analyserRef.current.minDecibels = -90;
+  //     analyserRef.current.maxDecibels = -10;
+  //     analyserRef.current.smoothingTimeConstant = 0.85;
+  //     source.connect(analyserRef.current);
+  //     console.log("Analyser connected.");
+
+  //     detectSilenceLoop();
+
+  //   } catch (error) {
+  //     console.error('Error setting up audio analysis:', error);
+  //     alert(`Failed to setup audio analysis: ${error.message}`);
+  //     handleStopRecording();
+  //   }
+  // };
+
+  // --- Main loop checking for silence using requestAnimationFrame ---
+
   const setupAudioAnalysis = (stream) => {
     try {
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        console.log("Creating new AudioContext...");
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      // --- ALWAYS CREATE A NEW AudioContext ---
+      // Close any lingering context first (belt-and-suspenders approach)
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        console.warn("Lingering AudioContext found in setupAudioAnalysis. Closing it before creating new.");
+        audioContextRef.current.close().catch(e => console.error("Error closing lingering context", e));
       }
+
+      console.log("Creating new AudioContext for analysis...");
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = null; // Clear old analyser ref
+
+      // --- Handle potential immediate suspension (browser autoplay policies) ---
       if (audioContextRef.current.state === 'suspended') {
-        console.log("Resuming suspended AudioContext...");
-        audioContextRef.current.resume().catch(e => console.error("Error resuming AudioContext", e));
+        console.log("Newly created AudioContext is suspended. Attempting to resume...");
+        // Resume needs to be asynchronous and might fail
+        audioContextRef.current.resume()
+          .then(() => {
+            console.log("AudioContext resumed successfully after creation.");
+            // Connect nodes *after* successful resume
+            connectAudioNodes(stream); // Use a helper function
+            detectSilenceLoop(); // Start detection loop
+          })
+          .catch(e => {
+            console.error("Error resuming newly created AudioContext:", e);
+            // Provide specific user feedback for this common issue
+            if (e.name === 'NotAllowedError' || e.message.includes('user gesture')) {
+              alert("Audio playback/recording requires user interaction (like clicking the record button). If the error persists, check browser permissions.");
+            } else {
+              alert(`Failed to resume audio context: ${e.message}. Recording cannot start.`);
+            }
+            handleStopRecording(); // Critical failure, stop everything
+          });
+      } else {
+        // If not suspended, connect and start immediately
+        console.log("Newly created AudioContext is running.");
+        connectAudioNodes(stream); // Use a helper function
+        detectSilenceLoop(); // Start detection loop
       }
-
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 2048;
-      analyserRef.current.minDecibels = -90;
-      analyserRef.current.maxDecibels = -10;
-      analyserRef.current.smoothingTimeConstant = 0.85;
-      source.connect(analyserRef.current);
-      console.log("Analyser connected.");
-
-      detectSilenceLoop();
 
     } catch (error) {
       console.error('Error setting up audio analysis:', error);
       alert(`Failed to setup audio analysis: ${error.message}`);
-      handleStopRecording();
+      handleStopRecording(); // Stop if setup fails
     }
   };
 
-  // --- Main loop checking for silence using requestAnimationFrame ---
+  // Helper function to connect audio nodes (keeps setupAudioAnalysis cleaner)
+  const connectAudioNodes = (stream) => {
+    if (!audioContextRef.current || audioContextRef.current.state !== 'running' || !stream) {
+      console.error("Cannot connect audio nodes: Context not running or stream missing.");
+      // If context exists but isn't running here, it's an unexpected state
+      if (audioContextRef.current && audioContextRef.current.state !== 'running') {
+        alert(`Audio context failed to reach a running state (${audioContextRef.current.state}). Cannot start analysis.`);
+        handleStopRecording();
+      }
+      return; // Don't proceed if prerequisites aren't met
+    }
+    try {
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      // Configure analyser (consider making these configurable)
+      analyserRef.current.fftSize = 2048;
+      analyserRef.current.minDecibels = -90;
+      analyserRef.current.maxDecibels = -10;
+      analyserRef.current.smoothingTimeConstant = 0.85;
+
+      source.connect(analyserRef.current);
+      console.log("Audio source connected to analyser.");
+    } catch (error) {
+      console.error("Error connecting audio nodes:", error);
+      alert(`Failed connecting audio nodes: ${error.message}`);
+      handleStopRecording(); // Stop if connection fails
+    }
+  };
+
   const detectSilenceLoop = () => {
     // Initial log now happens *after* ref is manually set in handleStartRecording
     console.log('Starting detectSilenceLoop. isRecordingRef is now:', isRecordingRef.current);
