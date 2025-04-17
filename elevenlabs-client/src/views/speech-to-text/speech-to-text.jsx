@@ -679,7 +679,7 @@ const SpeechToText = () => {
         console.log(`Segment ${segmentUuid} stopped. Final chunks: ${audioChunksRef.current.length}`);
         if (audioChunksRef.current.length > 0) {
           console.log('mediaRecorder.onstop: ', moment().format('YYYY-MM-DD HH:mm:ss.SSS'))
-          sendAudioToServer([...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
+          sendAudioToServer(segmentUuid, [...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
           //Start next segment immediately to avoid audio breaks
           if (isRecordingRef.current) {
             startNewRecordingSegment()
@@ -693,7 +693,7 @@ const SpeechToText = () => {
       mediaRecorder.onerror = (event) => {
         console.error("MediaRecorder segment error:", event.error);
         const segmentUuid = recordingRef.current?.uuid;
-        if (audioChunksRef.current.length > 0) { sendAudioToServer([...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current }); }
+        if (audioChunksRef.current.length > 0) { sendAudioToServer(segmentUuid, [...audioChunksRef.current], mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current }); }
         if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
@@ -836,13 +836,13 @@ const SpeechToText = () => {
   //   }
   // };
 
-  const sendAudioToServer = async (chunks, mimeType, options) => {
+  const sendAudioToServer = async (uuid, chunks, mimeType, options) => {
     let { isInterim, segmentCutoff } = options;
     console.log('sendAudioToServer chunks:', chunks)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
-    if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
+    //if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
-    const { uuid } = recordingRef.current;
+    //const { uuid } = recordingRef.current;
     const audioBlob = new Blob(chunks, { type: mimeType });
 
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
