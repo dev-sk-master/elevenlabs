@@ -971,7 +971,7 @@ const SpeechToText = () => {
       const translatedText = responseData.text.trim();
 
       setTranscriptions(prev =>
-        prev.map(item => (item.uuid === uuid ? { ...item, translate: { text: translatedText, status: 'completed', error: null } } : item))
+        prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), text: translatedText, status: 'completed', error: null } } : item))
       );
 
     } catch (error) {
