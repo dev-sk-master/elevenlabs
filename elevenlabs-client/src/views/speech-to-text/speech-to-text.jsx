@@ -10,6 +10,8 @@ import isEqual from 'lodash/isEqual';
 import usePrevious from '../../hooks/usePrevious';
 import ReactAudioPlayer from 'react-audio-player';
 import TranscriptionItemOwner from './components/transcription-item-owner';
+import { MediaRecorder, register } from 'extendable-media-recorder';
+import { connect } from 'extendable-media-recorder-wav-encoder';
 
 // Socket connection
 const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, {
@@ -69,6 +71,17 @@ const SpeechToText = () => {
   const maxDurationTimeoutRef = useRef(null);
   const isInterimResultsRef = useRef(false);
   const isMaxSegmentDurationCutoff = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await register(await connect());
+        console.log("WAV encoder registered");
+      } catch (err) {
+        console.error("Failed to register WAV encoder", err);
+      }
+    })();
+  }, []);
 
 
   // --- Hooks ---
@@ -284,24 +297,31 @@ const SpeechToText = () => {
       //fullAudioChunksRef.current = []; // Clear previous full chunks, keep until clear
 
       // --- Setup Full Audio Recorder ---
-      const options = getSupportedMimeTypeOptions();
-      if (options === null) {
-        throw new Error('No supported audio format found for recording.');
+      // const options = getSupportedMimeTypeOptions();
+      // if (options === null) {
+      //   throw new Error('No supported audio format found for recording.');
+      // }
+      // // Determine the actual mimeType being used
+      // let effectiveMimeType = 'application/octet-stream'; // Fallback
+      // if (options?.mimeType) {
+      //   effectiveMimeType = options.mimeType;
+      // } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      //   effectiveMimeType = 'audio/webm;codecs=opus';
+      // } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      //   effectiveMimeType = 'audio/webm';
+      // }
+      // fullAudioMimeTypeRef.current = effectiveMimeType; // Store for later use
+      // console.log(`Setting up full recorder with type: ${effectiveMimeType}`);
+
+      let mimeType = 'audio/wav';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        // Fallback or notify the user
+        alert('WAV recording is not supported in this browser.');
       }
-      // Determine the actual mimeType being used
-      let effectiveMimeType = 'application/octet-stream'; // Fallback
-      if (options?.mimeType) {
-        effectiveMimeType = options.mimeType;
-      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        effectiveMimeType = 'audio/webm;codecs=opus';
-      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-        effectiveMimeType = 'audio/webm';
-      }
-      fullAudioMimeTypeRef.current = effectiveMimeType; // Store for later use
-      console.log(`Setting up full recorder with type: ${effectiveMimeType}`);
+      fullAudioMimeTypeRef.current = mimeType;
 
       try {
-        const fullRecorder = new MediaRecorder(stream, options);
+        const fullRecorder = new MediaRecorder(stream, { mimeType: mimeType });
         fullMediaRecorderRef.current = fullRecorder;
 
         fullRecorder.ondataavailable = (event) => {
@@ -607,28 +627,33 @@ const SpeechToText = () => {
     isInterimResultsRef.current = false;
     isMaxSegmentDurationCutoff.current = false;
 
-    const options = getSupportedMimeTypeOptions();
-    // Allow undefined (browser default) but handle null (nothing supported)
-    if (options === null) {
-      console.error('No supported MIME type found for MediaRecorder.');
-      alert('Your browser does not support common audio recording formats.');
-      handleStopRecording(); // Stop overall recording
-      return;
-    }
-    // Determine the actual mimeType being used (could be browser default)
-    let mimeType = 'application/octet-stream'; // Fallback
-    if (options?.mimeType) {
-      mimeType = options.mimeType;
-    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-      mimeType = 'audio/webm;codecs=opus';
-    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-      mimeType = 'audio/webm';
-    }
-    console.log(`Attempting to start segment recorder with options:`, options, `Effective mimeType: ${mimeType}`);
+    // const options = getSupportedMimeTypeOptions();
+    // // Allow undefined (browser default) but handle null (nothing supported)
+    // if (options === null) {
+    //   console.error('No supported MIME type found for MediaRecorder.');
+    //   alert('Your browser does not support common audio recording formats.');
+    //   handleStopRecording(); // Stop overall recording
+    //   return;
+    // }
+    // // Determine the actual mimeType being used (could be browser default)
+    // let mimeType = 'application/octet-stream'; // Fallback
+    // if (options?.mimeType) {
+    //   mimeType = options.mimeType;
+    // } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+    //   mimeType = 'audio/webm;codecs=opus';
+    // } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+    //   mimeType = 'audio/webm';
+    // }
+    // console.log(`Attempting to start segment recorder with options:`, options, `Effective mimeType: ${mimeType}`);
 
+    let mimeType = 'audio/wav';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      // Fallback or notify the user
+      alert('WAV recording is not supported in this browser.');
+    }
 
     try {
-      const mediaRecorder = new MediaRecorder(streamRef.current, options); // Pass options object or undefined
+      const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: mimeType }); // Pass options object or undefined
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
