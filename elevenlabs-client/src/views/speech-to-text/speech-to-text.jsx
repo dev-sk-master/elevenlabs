@@ -234,6 +234,7 @@ const SpeechToText = () => {
     const changedTranscriptions = [];
 
     for (const current of transcriptions) {
+      if (current.status == 'listening') continue;
       //if (current.moderation_status !== 'approved') continue;
       //if (current.status !== 'completed') continue;//only send if the transcription is completed
       const prev = prevMap.get(current.uuid);
