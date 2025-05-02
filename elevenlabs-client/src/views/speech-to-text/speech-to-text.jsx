@@ -1590,7 +1590,7 @@ const SpeechToText = () => {
           {/* Placeholder when no transcriptions */}
           {sortedTranscriptions.length === 0 && (
             <div className="text-center text-muted p-4 border rounded">
-              {room.role === 'owner' ? (isRecording ? "Listening..." : "Start recording to see transcriptions.") : "Waiting for transcriptions from the owner..."}
+              {room.role === 'owner' ? (isRecording ? "Listening..." : "Start recording to see transcriptions.") : "Waiting for transcriptions..."}
             </div>
           )}
 
