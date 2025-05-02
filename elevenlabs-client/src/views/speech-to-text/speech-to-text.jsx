@@ -48,6 +48,7 @@ const SpeechToText = () => {
   const [activeColumn, setActiveColumn] = useState(1);
 
   // --- Refs ---
+  const roomRef = useRef(room);
   const formDataRef = useRef(formData);
   const transcriptionsRef = useRef(transcriptions);
   const mediaRecorderRef = useRef(null);
@@ -106,6 +107,10 @@ const SpeechToText = () => {
 
   }, []);
 
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
   // Update Refs when State changes
   useEffect(() => {
     formDataRef.current = formData;
@@ -151,6 +156,20 @@ const SpeechToText = () => {
           return updated;
         });
       }
+
+      //Resend all transcription on reconnect
+      if (roomRef.current && roomRef.current.roomId && roomRef.current.role == 'owner' && !formDataRef.current.disableSharing) {
+        console.log('Reconnect sending transcriptions', transcriptionsRef.current)
+        socket.emit('transcriptions', {
+          roomId: roomRef.current.roomId,
+          transcriptions: transcriptionsRef.current,
+        });
+      }
+
+    });
+
+    socket.on('reconnect', attempt => {
+      console.log(`🔌 Successfully reconnected after ${attempt} tries`);
     });
 
     socket.on('transcriptions', ({ ownerId, roomId, transcriptions: receivedTranscriptions }) => {
@@ -246,7 +265,7 @@ const SpeechToText = () => {
     }
 
     if (changedTranscriptions.length > 0) {
-      console.log('🔁 Sending changed transcriptions:', changedTranscriptions.length);
+      console.log('🔁 Sending changed transcriptions:', changedTranscriptions);
       socket.emit('transcriptions', {
         roomId: room.roomId,
         transcriptions: changedTranscriptions,
