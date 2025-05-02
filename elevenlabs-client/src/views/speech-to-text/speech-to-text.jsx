@@ -812,7 +812,7 @@ const SpeechToText = () => {
       setTranscriptions(prev => {
         if (prev.some(item => item.uuid === uuid)) return prev;
         return [...prev, {
-          uuid, timestamp, status: 'processing', text: null,
+          uuid, timestamp, status: 'listening', text: null,
           audio: { mimeType: mimeType, chunks: [] },
           moderation_status: formDataRef.current.moderation ? 'pending' : 'approved'
         }];

@@ -21,6 +21,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         {/* Status Indicators */}
                         <span>
                             {item.segmentCutoff && <span className="badge bg-warning text-dark me-1">1m Cutoff</span>}
+                            {item.status === 'listening' && <span className="badge bg-info me-1">Listening...</span>}
                             {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
                             {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
                             {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
