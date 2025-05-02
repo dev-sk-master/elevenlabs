@@ -487,7 +487,7 @@ const SpeechToText = () => {
       }
     } else {
       console.log('Chunk MediaRecorder was not recording or already stopped.');
-      if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; } // Clear timer anyway
+      //if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; } // Clear timer anyway
       mediaRecorderRef.current = null; // Ensure ref is clear
       if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; } // Clear max duration timeout
     }
@@ -651,6 +651,7 @@ const SpeechToText = () => {
   };
 
   const detectSilenceLoop = () => {
+   
     // Initial log now happens *after* ref is manually set in handleStartRecording
     console.log('Starting detectSilenceLoop. isRecordingRef is now:', isRecordingRef.current);
 
@@ -821,7 +822,7 @@ const SpeechToText = () => {
             startNewRecordingSegment()
           }
         }
-        if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
+        //if (chunksTimerRef.current) { clearInterval(chunksTimerRef.current); chunksTimerRef.current = null; }
         if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
         if (mediaRecorderRef.current === mediaRecorder) { mediaRecorderRef.current = null; }
       };
@@ -849,7 +850,9 @@ const SpeechToText = () => {
         }];
       });
 
+      
       if (formDataRef.current.chunksDuration > 0 && formDataRef.current.showInterimResults) {
+        console.log('Testing', formDataRef.current.chunksDuration, formDataRef.current.showInterimResults, mediaRecorder?.state)
         if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
         chunksTimerRef.current = setInterval(() => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
@@ -971,6 +974,7 @@ const SpeechToText = () => {
   //     );
   //   }
   // };
+
 
   const sendAudioToServer = async (uuid, chunks, mimeType, options) => {
     let { isInterim, segmentCutoff } = options;
