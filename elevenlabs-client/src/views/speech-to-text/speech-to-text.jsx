@@ -761,8 +761,9 @@ const SpeechToText = () => {
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
+        const segmentUuid = recordingRef.current?.uuid;
         if (event.data.size > 0) {
-          console.log(`Chunk received: ${event.data.size} bytes, type: ${event.data.type || mimeType}`);
+          console.log(`Segment ${segmentUuid} Chunk received: ${event.data.size} bytes, type: ${event.data.type || mimeType}`);
           audioChunksRef.current.push(event.data);
           //const currentUuid = recordingRef.current?.uuid;
           //if (currentUuid) {
@@ -772,8 +773,8 @@ const SpeechToText = () => {
           //       ? { ...item, audio: { ...(item.audio || {}), chunks: [...audioChunksRef.current], mimeType: mimeType } } // Store effective mimeType
           //       : item
           //   )
-          // );          
-          //sendAudioToServer(audioChunksRef.current, mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
+          // );                    
+          sendAudioToServer(segmentUuid, audioChunksRef.current, mimeType, { isInterim: isInterimResultsRef.current, segmentCutoff: isMaxSegmentDurationCutoff.current });
           //}
         }
       };
@@ -821,7 +822,7 @@ const SpeechToText = () => {
         if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
         chunksTimerRef.current = setInterval(() => {
           if (mediaRecorder?.state === "recording") { // Check specific instance
-            //  console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
+            console.log(`Requesting data for segment ${recordingRef.current?.uuid}...`);
             isInterimResultsRef.current = true;
             try {
               mediaRecorder.requestData();
@@ -830,7 +831,7 @@ const SpeechToText = () => {
               isInterimResultsRef.current = false;
             }
           } else {
-            //  console.log("Chunk interval: Recorder no longer recording, clearing interval.");
+            console.log("Chunk interval: Recorder no longer recording, clearing interval.");
             if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
             chunksTimerRef.current = null;
           }
