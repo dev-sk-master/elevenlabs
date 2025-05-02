@@ -49,7 +49,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         {(() => {
                             const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
                             if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
-                            return <ReactAudioPlayer
+                            return (<><ReactAudioPlayer
                                 key={audioUrl}
                                 src={audioUrl}
                                 controls
@@ -58,7 +58,16 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                                 onError={(e) => console.error("Individual audio error", e)}
                             //onCanPlay={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
                             //onAbort={e => { if (e.target.src) URL.revokeObjectURL(e.target.src); }} // Attempt cleanup
-                            />;
+                            />
+                                <a
+                                    href={audioUrl}
+                                    // Construct filename using stored mimeType
+                                    download={`audio_recording_${room.roomId}_${Date.now()}.${item.audio.mimeType?.split(';')[0]?.split('/')[1] || 'webm'}`}
+                                    className="btn btn-sm btn-outline-secondary mt-2"
+                                >
+                                    <i className="bi bi-download me-1"></i> Download Audio
+                                </a>
+                            </>);
                         })()}
                         {/* MimeType: {item.audio.mimeType} */}
                     </div>
