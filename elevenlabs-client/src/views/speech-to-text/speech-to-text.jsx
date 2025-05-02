@@ -4,10 +4,11 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import languages from "../../data/languages.json";
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
-import { isMobile } from 'react-device-detect';
+// import { isMobile } from 'react-device-detect';
 import { io } from 'socket.io-client';
 import isEqual from 'lodash/isEqual';
 import usePrevious from '../../hooks/usePrevious';
+import useIsMobile from '../../hooks/useIsMobile';
 import ReactAudioPlayer from 'react-audio-player';
 import TranscriptionItemOwner from './components/transcription-item-owner';
 import { Helmet } from 'react-helmet-async';
@@ -20,6 +21,7 @@ const socket = io(`${import.meta.env.VITE_SOCKET_URL}`, {
 });
 
 const SpeechToText = () => {
+  const isMobile = useIsMobile();
   // --- State ---
   const [room, setRoom] = useState(null);
   const [formData, setFormData] = useState({
@@ -1439,6 +1441,37 @@ const SpeechToText = () => {
     (a, b) => moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf() - moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf()
   );
 
+  function groupTextItems(textItems) {
+    const paragraphs = [];
+    let currentParagraph = [];
+  
+    textItems.forEach((item) => {
+      if (item.text.trim().endsWith('.')) {
+        currentParagraph.push(item.text.trim());
+        
+        // If we have 3 items in the current paragraph, push them as a new paragraph
+        if (currentParagraph.length === 3) {
+          paragraphs.push(currentParagraph.join(' ')); // Join the 3 items into one paragraph
+          currentParagraph = []; // Reset for next set
+        }
+      } else {
+        // If an item doesn't end with a full stop, start a new paragraph with it
+        if (currentParagraph.length > 0) {
+          paragraphs.push(currentParagraph.join(' ')); // Push any remaining paragraph
+          currentParagraph = [];
+        }
+        paragraphs.push(item.text.trim()); // Add the current item as its own paragraph
+      }
+    });
+  
+    // If there are any remaining items, push them as a final paragraph
+    if (currentParagraph.length > 0) {
+      paragraphs.push(currentParagraph.join(' '));
+    }
+  
+    return paragraphs;
+  }
+
   return ( /* ... (Rest of the JSX, unchanged from previous version) ... */
     <>
       <Helmet>
@@ -1740,6 +1773,7 @@ const SpeechToText = () => {
                           )}
                         </>
                         ))}
+                        
                       </div>
                       <div className={`col-md-6 ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
                         {sortedTranscriptions.map((item, idx) => (<>

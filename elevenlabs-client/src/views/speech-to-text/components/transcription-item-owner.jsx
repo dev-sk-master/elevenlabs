@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import moment from 'moment';
 import ReactAudioPlayer from 'react-audio-player';
 
+
 const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit }) => {
     console.log('render TranscriptionItemOwner')
     useEffect(() => {
@@ -9,7 +10,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
     }, [])
     return (
         <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} /*onMouseLeave={handleMouseLeave}*/>
-            <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
+            <div className={`col-12 col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
                 <div
                     key={`transcription-${item.uuid}`}
                     className={`flex-fill p-2 mb-2 border rounded position-relative ${hoveredIndex === idx ? 'bg-light shadow-sm' : ''} ${item.status === 'failed' ? 'border-danger' : ''}`}
@@ -64,7 +65,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                     {/* )} */}
                 </div>
             </div>
-            <div className={`col-md-6 d-flex ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
+            <div className={`col-12 col-md-6 d-flex ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
                 <div
                     key={`translation-${item.uuid}`}
                     onMouseEnter={() => handleMouseEnter(idx)}
