@@ -1441,36 +1441,6 @@ const SpeechToText = () => {
     (a, b) => moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf() - moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf()
   );
 
-  function groupTextItems(textItems) {
-    const paragraphs = [];
-    let currentParagraph = [];
-  
-    textItems.forEach((item) => {
-      if (item.text.trim().endsWith('.')) {
-        currentParagraph.push(item.text.trim());
-        
-        // If we have 3 items in the current paragraph, push them as a new paragraph
-        if (currentParagraph.length === 3) {
-          paragraphs.push(currentParagraph.join(' ')); // Join the 3 items into one paragraph
-          currentParagraph = []; // Reset for next set
-        }
-      } else {
-        // If an item doesn't end with a full stop, start a new paragraph with it
-        if (currentParagraph.length > 0) {
-          paragraphs.push(currentParagraph.join(' ')); // Push any remaining paragraph
-          currentParagraph = [];
-        }
-        paragraphs.push(item.text.trim()); // Add the current item as its own paragraph
-      }
-    });
-  
-    // If there are any remaining items, push them as a final paragraph
-    if (currentParagraph.length > 0) {
-      paragraphs.push(currentParagraph.join(' '));
-    }
-  
-    return paragraphs;
-  }
 
   return ( /* ... (Rest of the JSX, unchanged from previous version) ... */
     <>
@@ -1760,34 +1730,112 @@ const SpeechToText = () => {
                   {room.role === 'user' && (<>
                     <div className="row gx-3 mb-2">
                       <div className={`col-md-6 ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                        {sortedTranscriptions.map((item, idx) => (<>
+                        {/* {sortedTranscriptions.map((item, idx) => (<>
                           {item.text != "" && !item.error && (
                             <span
                               key={`transcription-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
                               className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
-                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em'  }}
                             >
                               {cleanHtml(item.text)}
                             </span>
                           )}
                         </>
-                        ))}
-                        
+                        ))}  */}
+
+
+                        {(() => {
+                          const paragraphs = [];
+                          let currentParagraph = [];
+                          let sentenceCount = 0;
+
+                          sortedTranscriptions.forEach((item, idx) => {
+                            if (item.text && !item.error) {
+                              const sentenceSplit = item.text.split(/[.!?]+/).filter(Boolean);
+                              sentenceCount += sentenceSplit.length;
+                              currentParagraph.push(
+                                <span
+                                  key={`transcription-${item.uuid}`}
+                                  onMouseEnter={() => handleMouseEnter(idx)}
+                                  className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
+                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' }}
+                                >
+                                  {cleanHtml(item.text)}
+                                </span>
+                              );
+
+                              if (sentenceCount >= 5) {
+                                paragraphs.push(<p key={`paragraph-${paragraphs.length}`}>{currentParagraph}</p>);
+                                currentParagraph = [];
+                                sentenceCount = 0;
+                              }
+                            }
+                          });
+
+                          // Add remaining content if not empty
+                          if (currentParagraph.length > 0) {
+                            paragraphs.push(<p key={`paragraph-${paragraphs.length}`}>{currentParagraph}</p>);
+                          }
+
+                          return paragraphs;
+                        })()}
+
+
+
                       </div>
                       <div className={`col-md-6 ${(activeColumn === 1 || !isMobile) ? 'd-block' : 'd-none'}`}>
-                        {sortedTranscriptions.map((item, idx) => (<>
+                        {/*  {sortedTranscriptions.map((item, idx) => (<>
                           {item.translate?.text != "" && !item.translate?.error && (
                             <span
                               key={`translation-${item.uuid}`}
                               onMouseEnter={() => handleMouseEnter(idx)}
                               className={`pe-1 ${hoveredIndex === idx ? item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
-                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' /* Ensure consistent height */ }}
+                              style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' }}
                             >
                               {cleanHtml(item.translate?.text)}
                             </span>
                           )}
-                        </>))}
+                        </>))} */}
+
+                        {(() => {
+                          const paragraphs = [];
+                          let currentParagraph = [];
+                          let sentenceCount = 0;
+
+                          sortedTranscriptions.forEach((item, idx) => {
+                            const text = item.translate?.text;
+                            if (text && !item.translate?.error) {
+                              const sentenceSplit = text.split(/[.!?]+/).filter(Boolean);
+                              sentenceCount += sentenceSplit.length;
+
+                              currentParagraph.push(
+                                <span
+                                  key={`translation-${item.uuid}`}
+                                  onMouseEnter={() => handleMouseEnter(idx)}
+                                  className={`pe-1 ${hoveredIndex === idx ? (item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info') : ''}`}
+                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' }}
+                                >
+                                  {cleanHtml(text)}
+                                </span>
+                              );
+
+                              if (sentenceCount >= 4) {
+                                paragraphs.push(<p key={`paragraph-${paragraphs.length}`}>{currentParagraph}</p>);
+                                currentParagraph = [];
+                                sentenceCount = 0;
+                              }
+                            }
+                          });
+
+                          // Add remaining content as last paragraph
+                          if (currentParagraph.length > 0) {
+                            paragraphs.push(<p key={`paragraph-${paragraphs.length}`}>{currentParagraph}</p>);
+                          }
+
+                          return paragraphs;
+                        })()}
+
                       </div>
                     </div>
                   </>)}
