@@ -658,7 +658,7 @@ const SpeechToText = () => {
 
       //Use a Weighted or Smoothed Volume History
       const volumeHistory = [];
-      const historySize = 5;
+      const historySize = 25;
 
       volumeHistory.push(volume);
       if (volumeHistory.length > historySize) volumeHistory.shift();
