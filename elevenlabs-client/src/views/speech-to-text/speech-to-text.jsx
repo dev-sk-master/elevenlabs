@@ -656,10 +656,19 @@ const SpeechToText = () => {
       let average = sum / bufferLength;
       let volume = average / 128.0;
 
+      //Use a Weighted or Smoothed Volume History
+      const volumeHistory = [];
+      const historySize = 5;
+
+      volumeHistory.push(volume);
+      if (volumeHistory.length > historySize) volumeHistory.shift();
+
+      const smoothedVolume = volumeHistory.reduce((a, b) => a + b) / volumeHistory.length;
+
       //console.log('volume', volume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
 
       // --- Speech Detected ---
-      if (volume >= SPEECH_THRESHOLD) {
+      if (smoothedVolume >= SPEECH_THRESHOLD) {
         if (!hasSpokenRef.current) {
           console.log('User started speaking! (from detectSilenceLoop)');
           hasSpokenRef.current = true;
@@ -672,7 +681,7 @@ const SpeechToText = () => {
         }
       }
       // --- Silence Detected ---
-      else if (volume < SILENCE_THRESHOLD && hasSpokenRef.current) {
+      else if (smoothedVolume < SILENCE_THRESHOLD && hasSpokenRef.current) {
         //console.log('inside Silence Detected', silenceTimerRef.current)
         if (!silenceTimerRef.current) {
           // ... (dynamic duration calculation - unchanged) ...
