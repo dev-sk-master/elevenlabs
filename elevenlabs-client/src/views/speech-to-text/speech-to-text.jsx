@@ -68,8 +68,17 @@ const SpeechToText = () => {
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
 
   // --- Constants ---
-  const SPEECH_THRESHOLD = 0.02;
-  const SILENCE_THRESHOLD = 0.01;
+  const DEFAULT_SPEECH_MULTIPLIER = 3;
+  const DEFAULT_SILENCE_MULTIPLIER = 1.5;
+
+  let smoothedVolume = 0;
+  let ambientVolume = 0;
+  let calibrationCount = 0;
+  let calibrating = true;
+  const calibrationFrames = 100; // ~2 seconds at 60fps
+
+  let SPEECH_THRESHOLD = 0.02;
+  let SILENCE_THRESHOLD = 0.01;
 
   const MAX_SEGMENT_DURATION_MS = 60 * 1000; // 1 minute in milliseconds
   const maxDurationTimeoutRef = useRef(null);
@@ -123,17 +132,17 @@ const SpeechToText = () => {
   }, [transcriptions]);
 
   // Keep isRecordingRef synced with isRecording state
-  useEffect(() => {
-    isRecordingRef.current = isRecording;
-    // This log confirms the sync happens, but might be *after* the loop starts
-    // console.log("useEffect sync: isRecording state updated, ref is now:", isRecordingRef.current);
-    if (!isRecording && transcriptionsRef.current.length > 0) {
-      console.log('Remove empty audio transcription items')
-      setTranscriptions(prev =>
-        prev.filter(item => item.audio?.chunks.length > 0)
-      );
-    }
-  }, [isRecording]);
+  // useEffect(() => {
+  //   isRecordingRef.current = isRecording;
+  //   // This log confirms the sync happens, but might be *after* the loop starts
+  //   // console.log("useEffect sync: isRecording state updated, ref is now:", isRecordingRef.current);
+  //   if (!isRecording && transcriptionsRef.current.length > 0) {
+  //     console.log('Remove empty audio transcription items')
+  //     setTranscriptions(prev =>
+  //       prev.filter(item => item.audio?.chunks.length > 0)
+  //     );
+  //   }
+  // }, [isRecording]);
 
   // --- Socket IO Setup & Room Management ---
   useEffect(() => {
@@ -665,6 +674,8 @@ const SpeechToText = () => {
     const dataArray = new Uint8Array(bufferLength);
     let animationFrameId; // To potentially cancel if needed, though returning is usually enough
 
+    const alpha = 0.1; // For EWMA smoothing
+
     const check = () => {
       // *** Check the ref inside the loop ***
       if (!analyserRef.current || !isRecordingRef.current) {
@@ -680,13 +691,30 @@ const SpeechToText = () => {
       let volume = average / 128.0;
 
       //Use a Weighted or Smoothed Volume History
-      const volumeHistory = [];
-      const historySize = 25;
+      // const volumeHistory = [];
+      // const historySize = 25;
 
-      volumeHistory.push(volume);
-      if (volumeHistory.length > historySize) volumeHistory.shift();
+      // volumeHistory.push(volume);
+      // if (volumeHistory.length > historySize) volumeHistory.shift();
 
-      const smoothedVolume = volumeHistory.reduce((a, b) => a + b) / volumeHistory.length;
+      //const smoothedVolume = volumeHistory.reduce((a, b) => a + b) / volumeHistory.length;
+
+      // Smooth volume with EWMA
+      smoothedVolume = alpha * volume + (1 - alpha) * smoothedVolume;
+
+      // Initial ambient calibration (first 100 frames)
+      if (calibrating) {
+        ambientVolume += smoothedVolume;
+        calibrationCount++;
+        if (calibrationCount >= calibrationFrames) {
+          ambientVolume /= calibrationFrames;
+          SPEECH_THRESHOLD = ambientVolume * DEFAULT_SPEECH_MULTIPLIER;
+          SILENCE_THRESHOLD = ambientVolume * DEFAULT_SILENCE_MULTIPLIER;
+          calibrating = false;
+          console.log('Calibration complete.');
+          console.log('Ambient:', ambientVolume.toFixed(4), 'Speech Threshold:', SPEECH_THRESHOLD.toFixed(4), 'Silence Threshold:', SILENCE_THRESHOLD.toFixed(4));
+        }
+      }
 
       console.log('volume', volume, smoothedVolume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
 
