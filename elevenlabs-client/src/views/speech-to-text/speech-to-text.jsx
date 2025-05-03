@@ -651,7 +651,7 @@ const SpeechToText = () => {
   };
 
   const detectSilenceLoop = () => {
-   
+
     // Initial log now happens *after* ref is manually set in handleStartRecording
     console.log('Starting detectSilenceLoop. isRecordingRef is now:', isRecordingRef.current);
 
@@ -688,7 +688,7 @@ const SpeechToText = () => {
 
       const smoothedVolume = volumeHistory.reduce((a, b) => a + b) / volumeHistory.length;
 
-      //console.log('volume', volume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
+      console.log('volume', volume, smoothedVolume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
 
       // --- Speech Detected ---
       if (smoothedVolume >= SPEECH_THRESHOLD) {
@@ -850,7 +850,7 @@ const SpeechToText = () => {
         }];
       });
 
-      
+
       if (formDataRef.current.chunksDuration > 0 && formDataRef.current.showInterimResults) {
         console.log('Testing', formDataRef.current.chunksDuration, formDataRef.current.showInterimResults, mediaRecorder?.state)
         if (chunksTimerRef.current) clearInterval(chunksTimerRef.current);
