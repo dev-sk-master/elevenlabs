@@ -682,7 +682,7 @@ const SpeechToText = () => {
       let average = sum / bufferLength;
       let volume = average / 128.0;
 
-      
+
 
       //Use a Weighted or Smoothed Volume History
       // const volumeHistory = [];
@@ -697,20 +697,27 @@ const SpeechToText = () => {
       smoothedVolume = alpha * volume + (1 - alpha) * smoothedVolume;
 
 
-      console.log('volume', volume, smoothedVolume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
+      //console.log('volume', volume, smoothedVolume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
 
       // --- Speech Detected ---
       if (smoothedVolume >= SPEECH_THRESHOLD) {
         if (!hasSpokenRef.current) {
           console.log('User started speaking! (from detectSilenceLoop)');
+          console.log(
+            `Volume Debug → volume: ${volume}, smoothedVolume: ${smoothedVolume}, SPEECH_THRESHOLD: ${SPEECH_THRESHOLD}, SILENCE_THRESHOLD: ${SILENCE_THRESHOLD}`
+          );
           hasSpokenRef.current = true;
           startNewRecordingSegment(); // Start segment recorder
         }
         if (silenceTimerRef.current) {
           console.log('Clear silenceTimerRef (from detectSilenceLoop)');
+          console.log(
+            `Volume Debug → volume: ${volume}, smoothedVolume: ${smoothedVolume}, SPEECH_THRESHOLD: ${SPEECH_THRESHOLD}, SILENCE_THRESHOLD: ${SILENCE_THRESHOLD}`
+          );
           clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = null;
         }
+
       }
       // --- Silence Detected ---
       else if (smoothedVolume < SILENCE_THRESHOLD && hasSpokenRef.current) {
@@ -725,6 +732,10 @@ const SpeechToText = () => {
           dynamicDuration = Math.round(dynamicDuration / 50) * 50;
 
           console.log(`Silence detected. Setting timeout: ${dynamicDuration}ms (from detectSilenceLoop)`);
+          console.log(
+            `Volume Debug → volume: ${volume}, smoothedVolume: ${smoothedVolume}, SPEECH_THRESHOLD: ${SPEECH_THRESHOLD}, SILENCE_THRESHOLD: ${SILENCE_THRESHOLD}`
+          );
+
           setFormData((prev) => ({
             ...prev,
             silenceDuration: dynamicDuration // Use the generated value here
