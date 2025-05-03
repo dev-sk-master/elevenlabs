@@ -68,15 +68,7 @@ const SpeechToText = () => {
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
 
   // --- Constants ---
-  const DEFAULT_SPEECH_MULTIPLIER = 3;
-  const DEFAULT_SILENCE_MULTIPLIER = 1.5;
-
   let smoothedVolume = 0;
-  let ambientVolume = 0;
-  let calibrationCount = 0;
-  let calibrating = true;
-  const calibrationFrames = 100; // ~2 seconds at 60fps
-
   let SPEECH_THRESHOLD = 0.02;
   let SILENCE_THRESHOLD = 0.01;
 
@@ -690,6 +682,8 @@ const SpeechToText = () => {
       let average = sum / bufferLength;
       let volume = average / 128.0;
 
+      
+
       //Use a Weighted or Smoothed Volume History
       // const volumeHistory = [];
       // const historySize = 25;
@@ -702,19 +696,6 @@ const SpeechToText = () => {
       // Smooth volume with EWMA
       smoothedVolume = alpha * volume + (1 - alpha) * smoothedVolume;
 
-      // Initial ambient calibration (first 100 frames)
-      if (calibrating) {
-        ambientVolume += smoothedVolume;
-        calibrationCount++;
-        if (calibrationCount >= calibrationFrames) {
-          ambientVolume /= calibrationFrames;
-          SPEECH_THRESHOLD = ambientVolume * DEFAULT_SPEECH_MULTIPLIER;
-          SILENCE_THRESHOLD = ambientVolume * DEFAULT_SILENCE_MULTIPLIER;
-          calibrating = false;
-          console.log('Calibration complete.');
-          console.log('Ambient:', ambientVolume.toFixed(4), 'Speech Threshold:', SPEECH_THRESHOLD.toFixed(4), 'Silence Threshold:', SILENCE_THRESHOLD.toFixed(4));
-        }
-      }
 
       console.log('volume', volume, smoothedVolume, SPEECH_THRESHOLD, SILENCE_THRESHOLD, hasSpokenRef.current)
 
