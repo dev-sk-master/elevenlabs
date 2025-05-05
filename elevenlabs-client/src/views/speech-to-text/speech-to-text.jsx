@@ -77,17 +77,6 @@ const SpeechToText = () => {
   const isInterimResultsRef = useRef(false);
   const isMaxSegmentDurationCutoff = useRef(false);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     try {
-  //       await register(await connect());
-  //       console.log("WAV encoder registered");
-  //     } catch (err) {
-  //       console.error("Failed to register WAV encoder", err);
-  //     }
-  //   })();
-  // }, []);
-
 
   // --- Hooks ---
   const prevTranscriptions = usePrevious(transcriptions);
@@ -343,12 +332,7 @@ const SpeechToText = () => {
       fullAudioMimeTypeRef.current = mimeType; // Store for later use
       console.log(`Setting up full recorder with type: ${mimeType}`);
 
-      // let mimeType = 'audio/wav';
-      // if (!MediaRecorder.isTypeSupported(mimeType)) {
-      //   // Fallback or notify the user
-      //   alert('WAV recording is not supported in this browser.');
-      // }
-      // fullAudioMimeTypeRef.current = mimeType;
+
 
       try {
         const fullRecorder = new MediaRecorder(stream, { mimeType: mimeType });
@@ -543,36 +527,6 @@ const SpeechToText = () => {
     }
   };
 
-  // const setupAudioAnalysis = (stream) => {
-  //   try {
-  //     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-  //       console.log("Creating new AudioContext...");
-  //       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-  //     }
-  //     if (audioContextRef.current.state === 'suspended') {
-  //       console.log("Resuming suspended AudioContext...");
-  //       audioContextRef.current.resume().catch(e => console.error("Error resuming AudioContext", e));
-  //     }
-
-  //     const source = audioContextRef.current.createMediaStreamSource(stream);
-  //     analyserRef.current = audioContextRef.current.createAnalyser();
-  //     analyserRef.current.fftSize = 2048;
-  //     analyserRef.current.minDecibels = -90;
-  //     analyserRef.current.maxDecibels = -10;
-  //     analyserRef.current.smoothingTimeConstant = 0.85;
-  //     source.connect(analyserRef.current);
-  //     console.log("Analyser connected.");
-
-  //     detectSilenceLoop();
-
-  //   } catch (error) {
-  //     console.error('Error setting up audio analysis:', error);
-  //     alert(`Failed to setup audio analysis: ${error.message}`);
-  //     handleStopRecording();
-  //   }
-  // };
-
-  // --- Main loop checking for silence using requestAnimationFrame ---
 
   const setupAudioAnalysis = (stream) => {
     try {
@@ -919,81 +873,6 @@ const SpeechToText = () => {
     }
   };
 
-  // const sendAudioToServer = async (chunks, mimeType) => {
-  //   // ... (sending logic - unchanged) ...
-  //   if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
-  //   if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
-
-  //   const { uuid } = recordingRef.current;
-  //   const audioBlob = new Blob(chunks, { type: mimeType });
-  //   console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}`);
-
-  //   setTranscriptions(prev =>
-  //     prev.map(item => (item.uuid === uuid ? { ...item, status: ['completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing', error: null } : item))
-  //   );
-
-  //   try {
-  //     const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
-  //     const response = await fetch(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
-
-  //     if (!response.ok) {
-  //       let errorMsg = `Transcription failed (${response.status})`;
-  //       try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
-  //       throw new Error(errorMsg);
-  //     }
-
-  //     const data = await response.json();
-  //     console.log(`Transcription received for ${uuid}: "${data.text}"`);
-  //     setTranscriptions(prev =>
-  //       prev.map(item => (item.uuid === uuid ? { ...item, ...data, status: 'completed' } : item))
-  //     );
-
-  //     if (data.text && formDataRef.current.translateLanguage) {
-  //       translateData(uuid, data.text);
-  //     }
-
-  //   } catch (error) {
-  //     console.error(`Transcription error for ${uuid}:`, error);
-  //     setTranscriptions(prev =>
-  //       prev.map(item => (item.uuid === uuid ? { ...item, error: error.message, status: 'failed' } : item))
-  //     );
-  //   }
-  // };
-
-  // const translateData = async (uuid, textToTranslate) => {
-  //   // ... (translation logic - unchanged) ...
-  //   if (!textToTranslate || !formDataRef.current.translateLanguage) { return; }
-  //   console.log(`Translating for ${uuid} to ${formDataRef.current.translateLanguage}`);
-
-  //   setTranscriptions(prev =>
-  //     prev.map(item => item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), status: item.translate?.status === 'completed' ? 'reprocessing' : 'processing', error: null } } : item) // Clear previous error
-  //   );
-
-  //   try {
-  //     const response = await fetch(`${import.meta.env.VITE_API_URL}/translate`, {
-  //       method: 'POST', body: JSON.stringify({ text: textToTranslate, target: formDataRef.current.translateLanguage }),
-  //       headers: { 'Content-Type': "application/json" }
-  //     });
-
-  //     if (!response.ok) {
-  //       let errorMsg = `Translation failed (${response.status})`;
-  //       try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
-  //       throw new Error(errorMsg);
-  //     }
-
-  //     const responseData = await response.json();
-  //     console.log(`Translation received for ${uuid}: "${responseData.text}"`);
-  //     setTranscriptions(prev =>
-  //       prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...responseData, status: 'completed' } } : item))
-  //     );
-
-  //   } catch (error) {
-  //     console.error(`Translation error for ${uuid}:`, error);
-  //     setTranscriptions(prev =>
-  //       prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), error: error.message, status: 'failed' } } : item))
-  //     );
-  //   }
-  // };
 
 
   const sendAudioToServer = async (uuid, chunks, mimeType, options) => {
