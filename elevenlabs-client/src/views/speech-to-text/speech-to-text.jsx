@@ -68,6 +68,7 @@ const SpeechToText = () => {
   const fullAudioChunksRef = useRef([]);
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
 
+  const initialDataLoadedRef = useRef(false);
   const pendingSocketTransmissionsRef = useRef(new Map());
 
 
@@ -266,8 +267,15 @@ const SpeechToText = () => {
         const payload = { ...rest };
         changedTranscriptions.push(payload);
 
-        pendingSocketTransmissionsRef.current.set(payload.uuid, payload);
+        if (initialDataLoadedRef.current) {
+          pendingSocketTransmissionsRef.current.set(payload.uuid, payload);
+        }
       }
+    }
+
+    if (!initialDataLoadedRef.current) {
+      initialDataLoadedRef.current = true;
+      return;
     }
 
     if (changedTranscriptions.length > 0) {
