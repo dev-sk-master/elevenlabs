@@ -982,7 +982,7 @@ const SpeechToText = () => {
       const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
       const response = await fetchRetry(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
 
-      if (!response.ok) {
+      if (!response?.ok) {
         let errorMsg = `Transcription failed (${response.status})`;
         try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
         throw new Error(errorMsg); // Go to catch block
@@ -1094,7 +1094,7 @@ const SpeechToText = () => {
         headers: { 'Content-Type': "application/json" }
       });
 
-      if (!response.ok) {
+      if (!response?.ok) {
         let errorMsg = `Translation failed (${response.status})`;
         try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
         throw new Error(errorMsg);
