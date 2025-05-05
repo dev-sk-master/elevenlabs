@@ -286,6 +286,7 @@ const SpeechToText = () => {
   }, [transcriptions, room, prevTranscriptions]);
 
   const resendPendingSocketTranscriptions = () => {
+    const room = roomRef.current;
     const retryQueue = Array.from(pendingSocketTransmissionsRef.current.values());
     if (retryQueue.length === 0 || !socket.connected) return;
 
