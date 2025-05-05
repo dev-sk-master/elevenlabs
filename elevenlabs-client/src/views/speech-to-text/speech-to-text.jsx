@@ -1287,8 +1287,11 @@ const SpeechToText = () => {
         audio: {
           ...first.audio,
           chunks: [
-            ...first.audio.chunks,
-            ...rest.flatMap((t) => t.audio?.chunks || []),
+            new Blob([
+              ...first.audio.chunks,
+              ...rest.flatMap((t) => t.audio?.chunks || [])], { type: first.audio.mimeType })
+            // ...first.audio.chunks,
+            // ...rest.flatMap((t) => t.audio?.chunks || []),
           ],
         },
         translate: {
