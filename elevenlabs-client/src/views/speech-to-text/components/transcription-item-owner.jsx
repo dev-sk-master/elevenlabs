@@ -3,7 +3,7 @@ import moment from 'moment';
 import ReactAudioPlayer from 'react-audio-player';
 
 
-const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit }) => {
+const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMerge, handleMergeCheck, mergeChecks }) => {
     // console.log('render TranscriptionItemOwner')
     // useEffect(() => {
     //     console.log('inside render TranscriptionItemOwner')
@@ -33,11 +33,11 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
 
 
                     <div
-                        contentEditable={room.role === 'owner' && item.status == 'completed'}
+                        contentEditable={room.role === 'owner' && item.status == 'completed' && item.moderation_status == 'pending'}
                         suppressContentEditableWarning={true}
-                        onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.textContent || '') }}
+                        onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.innerText || '') }}
                         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                        style={{ minHeight: '1.5em' }}
+                        style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
                     >
                         {cleanHtml(item.text)}
                         {item.error ? <span className='text-danger'>{item.error}</span> : null}
@@ -96,19 +96,31 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                     )}
 
                     <div
-                        contentEditable={room.role === 'owner' && item.translate?.status === 'completed'}
+                        contentEditable={room.role === 'owner' && item.translate?.status === 'completed' && item.moderation_status == 'pending'}
                         suppressContentEditableWarning={true}
-                        onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.textContent || '') }}
+                        onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.innerText || '') }}
                         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                        style={{ minHeight: '1.5em' }}
+                        style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
                     >
                         {cleanHtml(item.translate?.text)}
                         {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
                     </div>
 
+
+
                     {/* Moderation Controls on Hover (Owner Only) */}
                     {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
                     <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
+                        <div className="form-check me-2" style={{ display: 'inline-block' }}>
+                            <input className="form-check-input" type="checkbox"
+                                checked={mergeChecks.includes(item.uuid)}
+                                onChange={() => handleMergeCheck(item.uuid)}
+                            />
+                            <label className="form-check-label text-muted" >
+                                Merge item
+                            </label>
+                        </div>
+
                         <small className='text-muted me-2'>Moderation:</small>
                         <div className="btn-group btn-group-sm" role="group">
                             <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>

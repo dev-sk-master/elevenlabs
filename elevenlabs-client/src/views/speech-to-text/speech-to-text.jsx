@@ -173,9 +173,11 @@ const SpeechToText = () => {
       console.log(`🔌 Successfully reconnected after ${attempt} tries`);
     });
 
-    socket.on('transcriptions', ({ ownerId, roomId, transcriptions: receivedTranscriptions }) => {
+
+    socket.on('transcriptions', ({ ownerId, roomId, transcriptions: receivedTranscriptions, isInitial = false }) => {
       //if (socket.id === senderId && formDataRef.current.disableSharing) return;
-      //if (socket.id === senderId && room?.role !== 'owner') return;
+      //if (socket.id === senderId && room?.role !== 'owner') return;      
+      //if (room?.roomId != roomId || room?.role == 'owner') return;
 
       console.log(`📨 Transcriptions from ${ownerId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
 
@@ -196,6 +198,7 @@ const SpeechToText = () => {
         // Sort only once after processing all items
         return Array.from(map.values()).sort((a, b) => moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf() - moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf());
       });
+
     });
 
     socket.on('cleared-room', ({ roomId, userId, role }) => {
@@ -923,7 +926,7 @@ const SpeechToText = () => {
       try {
         const response = await fetch(url, options);
         if (!response.ok) {
-          let errorMsg = `Request failed (${response.status})`;
+          let errorMsg = `Request failed (${response.error})`;
           try {
             const errorData = await response.json();
             errorMsg = errorData.error || errorMsg;
@@ -984,7 +987,7 @@ const SpeechToText = () => {
       const response = await fetchRetry(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
 
       if (!response?.ok) {
-        let errorMsg = `Transcription failed (${response.status})`;
+        let errorMsg = `Transcription failed`;
         try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
         throw new Error(errorMsg); // Go to catch block
       }
@@ -1096,7 +1099,7 @@ const SpeechToText = () => {
       });
 
       if (!response?.ok) {
-        let errorMsg = `Translation failed (${response.status})`;
+        let errorMsg = `Translation failed`;
         try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
         throw new Error(errorMsg);
       }
@@ -1228,6 +1231,7 @@ const SpeechToText = () => {
 
   };
   const handleTextEdit = useCallback((uuid, field, newText) => { /* ... (same as before) ... */
+
     setTranscriptions(prev => prev.map(item => {
       if (item.uuid !== uuid) return item;
       if (field === 'transcription') { return { ...item, text: newText }; }
@@ -1238,6 +1242,59 @@ const SpeechToText = () => {
   const handleModeration = useCallback((uuid, newStatus) => { /* ... (same as before) ... */
     setTranscriptions(prev => prev.map(item => item.uuid === uuid ? { ...item, moderation_status: newStatus } : item));
   }, []);
+
+  const [mergeChecks, setMergeChecks] = useState([]);
+
+  const handleMergeCheck = (uuid) => {
+    setMergeChecks((prev) =>
+      prev.includes(uuid)
+        ? prev.filter((id) => id !== uuid) // remove
+        : [...prev, uuid] // add
+    );
+  };
+  const handleMerge = useCallback(() => {
+    setTranscriptions((prevTranscriptions) => {
+      const mergeTranscriptions = prevTranscriptions.filter((t) =>
+        mergeChecks.includes(t.uuid)
+      );
+
+      if (mergeTranscriptions.length < 2) return prevTranscriptions;
+
+      const [first, ...rest] = mergeTranscriptions;
+
+      const updatedFirst = {
+        ...first,
+        text: [first.text, ...rest.map((t) => t.text)].join(' '),
+        audio: {
+          ...first.audio,
+          chunks: [
+            ...first.audio.chunks,
+            ...rest.flatMap((t) => t.audio?.chunks || []),
+          ],
+        },
+        translate: {
+          ...first.translate,
+          text: [first.translate.text, ...rest.map((t) => t.translate.text)].join(' '),
+        }
+      };
+
+      sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, { isInterim: updatedFirst.isInterim, segmentCutoff: updatedFirst.segmentCutoff });
+
+      for (let payload of rest) {
+        pendingSocketTransmissionsRef.current.set(payload.uuid, { ...payload, isDeleted: true });
+      }
+
+      resendPendingSocketTranscriptions();
+
+      // Return updated list
+      return prevTranscriptions
+        .filter((t) => !mergeChecks.includes(t.uuid)) // remove all merged items
+        .concat(updatedFirst); // re-add updated first
+    });
+
+
+    setMergeChecks([]);
+  }, [mergeChecks]);
 
   // Auto-scroll effect
   useEffect(() => { /* ... (same as before) ... */
@@ -1614,7 +1671,13 @@ const SpeechToText = () => {
 
                   {room.role === 'owner' && (<>
                     {sortedTranscriptions.map((item, idx) => (
-                      <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex} room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl} formData={formData} handleModeration={handleModeration} handleTextEdit={handleTextEdit} />
+                      <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex}
+                        room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl}
+                        formData={formData} handleModeration={handleModeration}
+                        handleTextEdit={handleTextEdit} handleMergeCheck={handleMergeCheck}
+                        handleMerge={handleMerge}
+                        mergeChecks={mergeChecks}
+                      />
                       // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
                       //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
                       //     <div
@@ -1750,7 +1813,7 @@ const SpeechToText = () => {
                                   key={`transcription-${item.uuid}`}
                                   onMouseEnter={() => handleMouseEnter(idx)}
                                   className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
-                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' }}
+                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em', whiteSpace: 'pre-line' }}
                                 >
                                   {cleanHtml(item.text)}
                                 </span>
@@ -1805,7 +1868,7 @@ const SpeechToText = () => {
                                   key={`translation-${item.uuid}`}
                                   onMouseEnter={() => handleMouseEnter(idx)}
                                   className={`pe-1 ${hoveredIndex === idx ? (item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info') : ''}`}
-                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em' }}
+                                  style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em', whiteSpace: 'pre-line' }}
                                 >
                                   {cleanHtml(text)}
                                 </span>
@@ -1848,6 +1911,14 @@ const SpeechToText = () => {
 
               {room.role === 'owner' && (
                 <div className="text-center mb-1">
+                  <button
+                    className={`btn btn-sm btn-primary mt-2 me-2`}
+                    onClick={handleMerge}
+                    disabled={mergeChecks.length < 2}
+                  >
+                    Merge Items
+                  </button>
+
                   <button
                     className={`btn btn-sm btn-danger mt-2`}
                     onClick={handleClearRecording}
