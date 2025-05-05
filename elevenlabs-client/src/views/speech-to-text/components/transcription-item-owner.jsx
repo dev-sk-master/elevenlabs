@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import moment from 'moment';
 import ReactAudioPlayer from 'react-audio-player';
+import ContentEditable from 'react-contenteditable'
+
 
 
 const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMerge, handleMergeCheck, mergeChecks }) => {
@@ -30,16 +32,16 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
                         </span>
                     </div>
-
-
+                    
                     <div
                         contentEditable={room.role === 'owner' && item.status == 'completed' && item.moderation_status == 'pending'}
                         suppressContentEditableWarning={true}
                         onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.innerText || '') }}
                         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                         style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
+                        dangerouslySetInnerHTML={{ __html: cleanHtml(item.text) }}
                     >
-                        {cleanHtml(item.text)}
+                        {/* {cleanHtml(item.text)} */}
                         {item.error ? <span className='text-danger'>{item.error}</span> : null}
                     </div>
 
@@ -101,8 +103,9 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.innerText || '') }}
                         className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
                         style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
+                        dangerouslySetInnerHTML={{ __html: cleanHtml(item.translate?.text) }}
                     >
-                        {cleanHtml(item.translate?.text)}
+                        {/* {cleanHtml(item.translate?.text)} */}
                         {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
                     </div>
 
