@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import moment from 'moment';
 import ReactAudioPlayer from 'react-audio-player';
-import ContentEditable from 'react-contenteditable'
+import ContentEditable from 'react-contenteditable';
 
 
 
