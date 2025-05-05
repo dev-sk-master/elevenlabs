@@ -767,7 +767,7 @@ const SpeechToText = () => {
     // ... (logic for starting a MediaRecorder segment - largely unchanged) ...
     // Ensure checks use isRecordingRef.current if needed
     if (!streamRef.current || mediaRecorderRef.current?.state === 'recording' || !isRecordingRef.current) {
-      console.warn("Cannot start new segment: No stream, already recording, or isRecordingRef is false.", { hasStream: !!streamRef.current, recorderState: mediaRecorderRef.current?.state, isRecording: isRecordingRef.current });
+      //console.warn("Cannot start new segment: No stream, already recording, or isRecordingRef is false.", { hasStream: !!streamRef.current, recorderState: mediaRecorderRef.current?.state, isRecording: isRecordingRef.current });
       return;
     }
     console.log("Starting new recording segment...", moment().format('YYYY-MM-DD HH:mm:ss.SSS'));
