@@ -148,14 +148,14 @@ const SpeechToText = () => {
         });
       }
 
-      //Resend all transcription on reconnect
-      if (roomRef.current && roomRef.current.roomId && roomRef.current.role == 'owner' && !formDataRef.current.disableSharing) {
-        console.log('Reconnect sending transcriptions', transcriptionsRef.current)
-        socket.emit('transcriptions', {
-          roomId: roomRef.current.roomId,
-          transcriptions: transcriptionsRef.current,
-        });
-      }
+      // //Resend all transcription on reconnect
+      // if (roomRef.current && roomRef.current.roomId && roomRef.current.role == 'owner' && !formDataRef.current.disableSharing) {
+      //   console.log('Reconnect sending transcriptions', transcriptionsRef.current)
+      //   socket.emit('transcriptions', {
+      //     roomId: roomRef.current.roomId,
+      //     transcriptions: transcriptionsRef.current,
+      //   });
+      // }
 
     });
 
