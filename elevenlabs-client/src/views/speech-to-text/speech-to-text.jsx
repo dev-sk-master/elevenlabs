@@ -1260,11 +1260,22 @@ const SpeechToText = () => {
         : [...prev, uuid] // add
     );
   };
-  const handleMerge = useCallback(() => {
+  const handleMerge = useCallback((action = 'selected') => {
     setTranscriptions((prevTranscriptions) => {
-      const mergeTranscriptions = prevTranscriptions.filter((t) =>
-        mergeChecks.includes(t.uuid)
+
+      let mergeTranscriptions;
+      let _mergeChecks = mergeChecks;  // Create a new variable to store checks
+
+      if (action === 'all') {
+        _mergeChecks = prevTranscriptions
+          .filter((t) => t.translate?.status === 'completed' && t.moderation_status === 'pending')  // Filter for 'pending' items
+          .map((t) => t.uuid);  // Extract UUIDs
+      }
+
+      mergeTranscriptions = prevTranscriptions.filter((t) =>
+        _mergeChecks.includes(t.uuid)
       );
+
 
       if (mergeTranscriptions.length < 2) return prevTranscriptions;
 
@@ -1295,9 +1306,15 @@ const SpeechToText = () => {
       resendPendingSocketTranscriptions();
 
       // Return updated list
-      return prevTranscriptions
-        .filter((t) => !mergeChecks.includes(t.uuid)) // remove all merged items
-        .concat(updatedFirst); // re-add updated first
+      // return prevTranscriptions
+      //   .filter((t) => !mergeChecks.includes(t.uuid)) // remove all merged items
+      //   .concat(updatedFirst); // re-add updated first
+      // Update transcriptions
+      return prevTranscriptions.map((t) => {
+        if (t.uuid === first.uuid) return updatedFirst;
+        if (_mergeChecks.includes(t.uuid)) return null; // remove merged
+        return t;
+      }).filter(Boolean); // remove nulls
     });
 
 
@@ -1682,8 +1699,8 @@ const SpeechToText = () => {
                       <TranscriptionItemOwner key={item.uuid} item={item} idx={idx} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} activeColumn={activeColumn} isMobile={isMobile} hoveredIndex={hoveredIndex}
                         room={room} cleanHtml={cleanHtml} createAudioUrl={createAudioUrl}
                         formData={formData} handleModeration={handleModeration}
-                        handleTextEdit={handleTextEdit} handleMergeCheck={handleMergeCheck}
-                        handleMerge={handleMerge}
+                        handleTextEdit={handleTextEdit}
+                        handleMergeCheck={handleMergeCheck}
                         mergeChecks={mergeChecks}
                       />
                       // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
@@ -1921,10 +1938,19 @@ const SpeechToText = () => {
                 <div className="text-center mb-1">
                   <button
                     className={`btn btn-sm btn-primary mt-2 me-2`}
-                    onClick={handleMerge}
+                    onClick={() => handleMerge('all')}
+                    disabled={transcriptions.filter((t) => t.translate?.status === 'completed' && t.moderation_status == 'pending').length < 2}
+                  >
+                    Merge All Pending
+                  </button>
+
+
+                  <button
+                    className={`btn btn-sm btn-primary mt-2 me-2`}
+                    onClick={() => handleMerge('selected')}
                     disabled={mergeChecks.length < 2}
                   >
-                    Merge Items
+                    Merge Selected Items
                   </button>
 
                   <button

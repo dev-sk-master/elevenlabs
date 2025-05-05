@@ -5,11 +5,11 @@ import ContentEditable from 'react-contenteditable';
 
 
 
-const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMerge, handleMergeCheck, mergeChecks }) => {
-    // console.log('render TranscriptionItemOwner')
-    // useEffect(() => {
-    //     console.log('inside render TranscriptionItemOwner')
-    // }, [])
+const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit,  handleMergeCheck, mergeChecks }) => {
+    console.log('render TranscriptionItemOwner', idx)
+    useEffect(() => {
+        console.log('inside render TranscriptionItemOwner', idx)
+    }, [])
     return (
         <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} /*onMouseLeave={handleMouseLeave}*/>
             <div className={`col-12 col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
@@ -32,7 +32,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}
                         </span>
                     </div>
-                    
+
                     <div
                         contentEditable={room.role === 'owner' && item.status == 'completed' && item.moderation_status == 'pending'}
                         suppressContentEditableWarning={true}
