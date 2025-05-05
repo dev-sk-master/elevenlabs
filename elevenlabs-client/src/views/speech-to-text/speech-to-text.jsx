@@ -68,6 +68,9 @@ const SpeechToText = () => {
   const fullAudioChunksRef = useRef([]);
   const fullAudioMimeTypeRef = useRef(null); // To store the mimeType used
 
+  const pendingSocketTransmissionsRef = useRef(new Map());
+
+
   // --- Constants ---
   let smoothedVolume = 0;
   let SPEECH_THRESHOLD = 0.02;
@@ -156,6 +159,13 @@ const SpeechToText = () => {
       //     transcriptions: transcriptionsRef.current,
       //   });
       // }
+
+      if (roomRef.current && roomRef.current.roomId
+        && roomRef.current.role == 'owner'
+        && !formDataRef.current.disableSharing
+        && pendingSocketTransmissionsRef.current.size > 0) {
+        resendPendingSocketTranscriptions();
+      }
 
     });
 
@@ -252,17 +262,50 @@ const SpeechToText = () => {
         const { /*audio,*/ ...rest } = current;
         const payload = { ...rest };
         changedTranscriptions.push(payload);
+
+        pendingSocketTransmissionsRef.current.set(payload.uuid, payload);
       }
     }
 
     if (changedTranscriptions.length > 0) {
       console.log('🔁 Sending changed transcriptions:', changedTranscriptions);
-      socket.emit('transcriptions', {
-        roomId: room.roomId,
-        transcriptions: changedTranscriptions,
-      });
+      if (!socket.connected) {
+        console.warn('🔌 Socket disconnected. Changes queued for retry.');
+        return;
+      }
+
+
+      // socket.emit('transcriptions', {
+      //   roomId: room.roomId,
+      //   transcriptions: changedTranscriptions,
+      // });
+
+      // Try sending all pending socket transcriptions (not just current changes)
+      resendPendingSocketTranscriptions();
     }
   }, [transcriptions, room, prevTranscriptions]);
+
+  const resendPendingSocketTranscriptions = () => {
+    const retryQueue = Array.from(pendingSocketTransmissionsRef.current.values());
+    if (retryQueue.length === 0 || !socket.connected) return;
+
+    console.log('🔁 Send pending socket transcriptions:', retryQueue);
+    socket.emit(
+      'transcriptions',
+      {
+        roomId: room.roomId,
+        transcriptions: retryQueue,
+      },
+      (ack) => {
+        console.log('emit transcriptions ack ', ack)
+        if (ack?.success) {
+          retryQueue.forEach(tx => pendingSocketTransmissionsRef.current.delete(tx.uuid));
+        } else {
+          console.warn('❌ Transcriptions send failed, will retry again later');
+        }
+      }
+    );
+  };
 
   function generateFriendlyCode(length = 6) { // Default to 6 for better uniqueness
     // Exclude confusing characters (0, O, 1, l, I)
@@ -874,7 +917,30 @@ const SpeechToText = () => {
     }
   };
 
-
+  async function fetchRetry(url, options = {}, retries = 3, delay = 1000) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          let errorMsg = `Request failed (${response.status})`;
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || errorMsg;
+          } catch { /* ignore parse errors */ }
+          throw new Error(errorMsg);
+        }
+        return response; // ✅ success
+      } catch (err) {
+        if (attempt < retries) {
+          console.warn(`⚠️ Fetch attempt ${attempt + 1} failed. Retrying in ${delay}ms...`, err.message);
+          await new Promise(res => setTimeout(res, delay));
+        } else {
+          console.error(`❌ All ${retries + 1} fetch attempts failed.`);
+          throw err; // ❌ rethrow after all retries
+        }
+      }
+    }
+  }
 
   const sendAudioToServer = async (uuid, chunks, mimeType, options) => {
     let { isInterim, segmentCutoff } = options;
@@ -914,7 +980,7 @@ const SpeechToText = () => {
 
     try {
       const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
-      const response = await fetch(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
+      const response = await fetchRetry(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
 
       if (!response.ok) {
         let errorMsg = `Transcription failed (${response.status})`;
@@ -1023,7 +1089,7 @@ const SpeechToText = () => {
 
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/translate`, {
+      const response = await fetchRetry(`${import.meta.env.VITE_API_URL}/translate`, {
         method: 'POST', body: JSON.stringify({ text: textToTranslate, target: formDataRef.current.translateLanguage }),
         headers: { 'Content-Type': "application/json" }
       });
