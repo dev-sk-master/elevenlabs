@@ -33,14 +33,15 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         </span>
                     </div>
 
-                    <div
-                        contentEditable={room.role === 'owner' && item.status == 'completed' && item.moderation_status == 'pending'}
-                        suppressContentEditableWarning={true}
-                        onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.innerText || '') }}
-                        className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                        style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
-                        dangerouslySetInnerHTML={{ __html: cleanHtml(item.text) }}
-                    >
+                    <div>
+                        <div
+                            contentEditable={room.role === 'owner' && item.status == 'completed' && item.moderation_status == 'pending'}
+                            suppressContentEditableWarning={true}
+                            onBlur={(e) => { if (room.role === 'owner' && item.status == 'completed') handleTextEdit(item.uuid, 'transcription', e.target.innerText || '') }}
+                            className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
+                            style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
+                            dangerouslySetInnerHTML={{ __html: cleanHtml(item.text) }}
+                        />
                         {/* {cleanHtml(item.text)} */}
                         {item.error ? <span className='text-danger'>{item.error}</span> : null}
                     </div>
@@ -109,14 +110,15 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                         </div>
                     )}
 
-                    <div
-                        contentEditable={room.role === 'owner' && item.translate?.status === 'completed' && item.moderation_status == 'pending'}
-                        suppressContentEditableWarning={true}
-                        onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.innerText || '') }}
-                        className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
-                        style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
-                        dangerouslySetInnerHTML={{ __html: cleanHtml(item.translate?.text) }}
-                    >
+                    <div>
+                        <div
+                            contentEditable={room.role === 'owner' && item.translate?.status === 'completed' && item.moderation_status == 'pending'}
+                            suppressContentEditableWarning={true}
+                            onBlur={(e) => { if (room.role === 'owner' && item.translate?.status === 'completed') handleTextEdit(item.uuid, 'translation', e.target.innerText || '') }}
+                            className={`editable-text p-1 ${room.role === 'owner' ? 'form-control-plaintext' : ''}`}
+                            style={{ minHeight: '1.5em', whiteSpace: 'pre-line' }}
+                            dangerouslySetInnerHTML={{ __html: cleanHtml(item.translate?.text) }}
+                        />
                         {/* {cleanHtml(item.translate?.text)} */}
                         {item.translate?.error ? <span className='text-danger'>{item.translate.error}</span> : null}
                     </div>
