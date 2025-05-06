@@ -988,15 +988,15 @@ const SpeechToText = () => {
 
 
       // Force download the merged audio
-      const mergedBlob = mergedResult.mergedAudio;  // assuming mergedAudio is a Blob
-      const downloadUrl = URL.createObjectURL(mergedBlob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = 'mergedAudio.wav';  // or .webm, etc. based on actual type
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
+      // const mergedBlob = mergedResult.mergedAudio;  // assuming mergedAudio is a Blob
+      // const downloadUrl = URL.createObjectURL(mergedBlob);
+      // const a = document.createElement('a');
+      // a.href = downloadUrl;
+      // a.download = 'mergedAudio.wav';  // or .webm, etc. based on actual type
+      // document.body.appendChild(a);
+      // a.click();
+      // document.body.removeChild(a);
+      // URL.revokeObjectURL(downloadUrl);
 
     }
 
