@@ -5,7 +5,7 @@ import ContentEditable from 'react-contenteditable';
 
 
 
-const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMergeCheck, mergeChecks }) => {
+const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMergeCheck, mergeChecks ,sendAudioToServer}) => {
     //console.log('render TranscriptionItemOwner', idx)
     // useEffect(() => {
     //     console.log('inside render TranscriptionItemOwner', idx)
@@ -72,6 +72,13 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             </>);
                         })()}
                         {/* MimeType: {item.audio.mimeType} */}
+                        <button
+                            className={`btn btn-sm btn-primary mt-2 ms-2`}
+                            onClick={() => sendAudioToServer()}
+
+                        >
+                            Reprocess
+                        </button>
                     </div>
                     {/* )} */}
                 </div>

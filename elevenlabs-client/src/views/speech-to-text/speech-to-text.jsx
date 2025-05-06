@@ -1858,6 +1858,7 @@ const SpeechToText = () => {
                         handleTextEdit={handleTextEdit}
                         handleMergeCheck={handleMergeCheck}
                         mergeChecks={mergeChecks}
+                        sendAudioToServer={sendAudioToServer}
                       />
                       // <div className="row gx-3 mb-2" key={`transcription-row-${item.uuid}`} onMouseEnter={() => handleMouseEnter(idx)} onMouseLeave={handleMouseLeave}>
                       //   <div className={`col-md-6 d-flex ${(activeColumn === 0 || !isMobile) ? 'd-block' : 'd-none'}`}>
