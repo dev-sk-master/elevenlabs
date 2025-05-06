@@ -179,6 +179,7 @@ const SpeechToText = () => {
       //if (socket.id === senderId && formDataRef.current.disableSharing) return;
       //if (socket.id === senderId && room?.role !== 'owner') return;      
       //if (room?.roomId != roomId || room?.role == 'owner') return;
+      if (initialDataLoadedRef.current) return;
 
       console.log(`📨 Transcriptions from ${ownerId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
 
@@ -1260,63 +1261,124 @@ const SpeechToText = () => {
         : [...prev, uuid] // add
     );
   };
-  const handleMerge = useCallback((action = 'selected') => {
-    setTranscriptions((prevTranscriptions) => {
+  // const handleMerge = useCallback(async (action = 'selected') => {
+  //   setTranscriptions((prevTranscriptions) => {
 
-      let mergeTranscriptions;
-      let _mergeChecks = mergeChecks;  // Create a new variable to store checks
+  //     let mergeTranscriptions;
+  //     let _mergeChecks = mergeChecks;  // Create a new variable to store checks
 
-      if (action === 'all') {
-        _mergeChecks = prevTranscriptions
-          .filter((t) => t.translate?.status === 'completed' && t.moderation_status === 'pending')  // Filter for 'pending' items
-          .map((t) => t.uuid);  // Extract UUIDs
+  //     if (action === 'all') {
+  //       _mergeChecks = prevTranscriptions
+  //         .filter((t) => t.translate?.status === 'completed' && t.moderation_status === 'pending')  // Filter for 'pending' items
+  //         .map((t) => t.uuid);  // Extract UUIDs
+  //     }
+
+  //     mergeTranscriptions = prevTranscriptions.filter((t) =>
+  //       _mergeChecks.includes(t.uuid)
+  //     );
+
+
+  //     if (mergeTranscriptions.length < 2) return prevTranscriptions;
+
+  //     const [first, ...rest] = mergeTranscriptions;
+
+
+  //     const updatedFirst = {
+  //       ...first,
+  //       text: [first.text, ...rest.map((t) => t.text)].join(' '),
+  //       audio: {
+  //         ...first.audio,
+  //         chunks: [
+  //           ...first.audio.chunks,
+  //           ...rest.flatMap((t) => t.audio?.chunks || []),
+  //         ],
+  //         mimeType: "audio/wav"
+  //       },
+  //       translate: {
+  //         ...first.translate,
+  //         text: [first.translate.text, ...rest.map((t) => t.translate.text)].join(' '),
+  //       }
+  //     };
+
+  //     sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, { isInterim: updatedFirst.isInterim, segmentCutoff: updatedFirst.segmentCutoff });
+
+  //     for (let payload of rest) {
+  //       pendingSocketTransmissionsRef.current.set(payload.uuid, { ...payload, isDeleted: true });
+  //     }
+
+  //     resendPendingSocketTranscriptions();
+
+  //     // Return updated list
+  //     // return prevTranscriptions
+  //     //   .filter((t) => !mergeChecks.includes(t.uuid)) // remove all merged items
+  //     //   .concat(updatedFirst); // re-add updated first
+  //     // Update transcriptions
+  //     return prevTranscriptions.map((t) => {
+  //       if (t.uuid === first.uuid) return updatedFirst;
+  //       if (_mergeChecks.includes(t.uuid)) return null; // remove merged
+  //       return t;
+  //     }).filter(Boolean); // remove nulls
+  //   });
+
+
+  //   setMergeChecks([]);
+  // }, [mergeChecks]);
+
+  const handleMerge = useCallback(async (action = 'selected') => {
+    const prevTranscriptions = [...transcriptionsRef.current]; // snapshot (if needed)
+    let _mergeChecks = mergeChecks;
+
+    if (action === 'all') {
+      _mergeChecks = prevTranscriptions
+        .filter((t) => t.translate?.status === 'completed' && t.moderation_status === 'pending')
+        .map((t) => t.uuid);
+    }
+
+    const mergeTranscriptions = prevTranscriptions.filter((t) =>
+      _mergeChecks.includes(t.uuid)
+    );
+
+    if (mergeTranscriptions.length < 2) return;
+
+    const [first, ...rest] = mergeTranscriptions;
+
+    const mergedBlob = await combineRecordings([
+      ...first.audio.chunks,
+      ...rest.flatMap((t) => t.audio?.chunks || []),
+    ]);
+
+    const updatedFirst = {
+      ...first,
+      text: [first.text, ...rest.map((t) => t.text)].join(' '),
+      audio: {
+        ...first.audio,
+        chunks: [mergedBlob],
+        mimeType: 'audio/wav',
+      },
+      translate: {
+        ...first.translate,
+        text: [first.translate.text, ...rest.map((t) => t.translate.text)].join(' '),
       }
+    };
 
-      mergeTranscriptions = prevTranscriptions.filter((t) =>
-        _mergeChecks.includes(t.uuid)
-      );
-
-
-      if (mergeTranscriptions.length < 2) return prevTranscriptions;
-
-      const [first, ...rest] = mergeTranscriptions;
-
-      const updatedFirst = {
-        ...first,
-        text: [first.text, ...rest.map((t) => t.text)].join(' '),
-        audio: {
-          ...first.audio,
-          chunks: [
-            ...first.audio.chunks,
-            ...rest.flatMap((t) => t.audio?.chunks || []),
-          ],
-        },
-        translate: {
-          ...first.translate,
-          text: [first.translate.text, ...rest.map((t) => t.translate.text)].join(' '),
-        }
-      };
-
-      sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, { isInterim: updatedFirst.isInterim, segmentCutoff: updatedFirst.segmentCutoff });
-
-      for (let payload of rest) {
-        pendingSocketTransmissionsRef.current.set(payload.uuid, { ...payload, isDeleted: true });
-      }
-
-      resendPendingSocketTranscriptions();
-
-      // Return updated list
-      // return prevTranscriptions
-      //   .filter((t) => !mergeChecks.includes(t.uuid)) // remove all merged items
-      //   .concat(updatedFirst); // re-add updated first
-      // Update transcriptions
-      return prevTranscriptions.map((t) => {
-        if (t.uuid === first.uuid) return updatedFirst;
-        if (_mergeChecks.includes(t.uuid)) return null; // remove merged
-        return t;
-      }).filter(Boolean); // remove nulls
+    sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, {
+      isInterim: updatedFirst.isInterim,
+      segmentCutoff: updatedFirst.segmentCutoff,
     });
 
+    for (const payload of rest) {
+      pendingSocketTransmissionsRef.current.set(payload.uuid, { ...payload, isDeleted: true });
+    }
+
+    resendPendingSocketTranscriptions();
+
+    setTranscriptions((prev) =>
+      prev.map((t) => {
+        if (t.uuid === first.uuid) return updatedFirst;
+        if (_mergeChecks.includes(t.uuid)) return null;
+        return t;
+      }).filter(Boolean)
+    );
 
     setMergeChecks([]);
   }, [mergeChecks]);
@@ -1325,6 +1387,84 @@ const SpeechToText = () => {
   useEffect(() => { /* ... (same as before) ... */
     if (autoScroll && scrollRef.current) { setTimeout(() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } }, 100); }
   }, [transcriptions, autoScroll]);
+
+
+  async function combineRecordings(recordings) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Decode all segments   
+    const buffers = await Promise.all(
+      recordings.map(async (item) => {
+        let arrayBuffer;
+    
+        if (item instanceof Blob) {
+          arrayBuffer = await item.arrayBuffer();
+        } else if (item instanceof ArrayBuffer) {
+          arrayBuffer = item;
+        } else {
+          throw new Error('Unsupported recording type');
+        }
+    
+        return await audioContext.decodeAudioData(arrayBuffer);
+      })
+    );
+    // Calculate total length
+    const numberOfChannels = Math.max(...buffers.map(b => b.numberOfChannels));
+    const sampleRate = audioContext.sampleRate;
+    const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
+    // Create empty buffer for combined
+    const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+    let offset = 0;
+    buffers.forEach(b => {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const channelData = b.getChannelData(channel) || new Float32Array(b.length);
+        outputBuffer.getChannelData(channel).set(channelData, offset);
+      }
+      offset += b.length;
+    });
+    // Encode WAV
+    const wavBlob = bufferToWave(outputBuffer, totalLength);
+
+    return wavBlob;
+
+  }
+
+  function bufferToWave(abuffer, len) {
+    const numOfChan = abuffer.numberOfChannels;
+    const length = len * numOfChan * 2 + 44;
+    const buffer = new ArrayBuffer(length);
+    const view = new DataView(buffer);
+    let pos = 0;
+    // RIFF identifier
+    writeString('RIFF');
+    view.setUint32(pos, length - 8, true); pos += 4;
+    writeString('WAVE');
+    writeString('fmt ');
+    view.setUint32(pos, 16, true); pos += 4; // fmt chunk length
+    view.setUint16(pos, 1, true); pos += 2; // PCM format
+    view.setUint16(pos, numOfChan, true); pos += 2;
+    view.setUint32(pos, abuffer.sampleRate, true); pos += 4;
+    view.setUint32(pos, abuffer.sampleRate * numOfChan * 2, true); pos += 4;
+    view.setUint16(pos, numOfChan * 2, true); pos += 2;
+    view.setUint16(pos, 16, true); pos += 2;
+    writeString('data');
+    view.setUint32(pos, length - pos - 4, true); pos += 4; // data chunk length
+    // Write interleaved samples
+    for (let i = 0; i < len; i++) {
+      for (let channel = 0; channel < numOfChan; channel++) {
+        let sample = abuffer.getChannelData(channel)[i];
+        sample = Math.max(-1, Math.min(1, sample));
+        view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        pos += 2;
+      }
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+
+    function writeString(s) {
+      for (let i = 0; i < s.length; i++) {
+        view.setUint8(pos, s.charCodeAt(i)); pos++;
+      }
+    }
+  }
 
   // --- Render ---
 
