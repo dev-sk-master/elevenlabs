@@ -985,6 +985,19 @@ const SpeechToText = () => {
       _chunks = mergedResult.chunks;
       console.log('Language modified final', _chunks)
       isAudioMerged = true;
+
+
+      // Force download the merged audio
+      const mergedBlob = mergedResult.mergedAudio;  // assuming mergedAudio is a Blob
+      const downloadUrl = URL.createObjectURL(mergedBlob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = 'mergedAudio.wav';  // or .webm, etc. based on actual type
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
     }
 
     console.log(chunks, _chunks);
