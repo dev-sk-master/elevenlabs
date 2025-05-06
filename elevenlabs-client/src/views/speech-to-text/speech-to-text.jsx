@@ -2090,7 +2090,7 @@ const SpeechToText = () => {
                   <button
                     className={`btn btn-sm btn-primary mt-2 me-2`}
                     onClick={() => handleMerge('all')}
-                    disabled={transcriptions.filter((t) => t.translate?.status === 'completed' && t.moderation_status == 'pending').length < 2}
+                    disabled={transcriptions.filter((t) => /*t.translate?.status === 'completed' &&*/ t.moderation_status == 'pending').length < 2}
                   >
                     Merge All Pending
                   </button>
