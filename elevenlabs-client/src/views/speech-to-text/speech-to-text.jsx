@@ -973,8 +973,8 @@ const SpeechToText = () => {
       const languageAudioSrc = audioFiles[formDataRef.current.language];
 
       const response = await fetch(languageAudioSrc);
-      const audioBlob = await response.blob();
-      // const audioBlob = new Blob([originalBlob], { type: mimeType });
+      const originalBlob = await response.blob();
+      const audioBlob = new Blob([originalBlob], { type: "audio/wav" });
       console.log('audioblob', audioBlob)
       _chunks.unshift(audioBlob);
       console.log('Language modified chunks', _chunks)
