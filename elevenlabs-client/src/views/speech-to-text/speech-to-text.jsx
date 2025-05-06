@@ -956,15 +956,16 @@ const SpeechToText = () => {
   }
 
   const sendAudioToServer = useCallback(async (uuid, chunks, mimeType, options) => {
-    let { isInterim, segmentCutoff } = options;
-    console.log('sendAudioToServer chunks:', chunks)
+    let { isInterim, segmentCutoff, isAudioMerged = false } = options;
+    console.log('sendAudioToServer chunks:', chunks, mimeType)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     //if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
     //const { uuid } = recordingRef.current;
-    const audioBlob = new Blob(chunks, { type: mimeType });
+console.log('isAudioMerged',isAudioMerged)
+    const audioBlobs = isAudioMerged ? [...chunks] : [new Blob(chunks, { type: mimeType })];
 
-    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
+    console.log(`Sending audio for segment ${uuid}, Size: ${audioBlobs.length}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
     let currentSequence = Date.now();
     // Set initial processing/reprocessing status for both transcription and translation
@@ -995,18 +996,22 @@ const SpeechToText = () => {
 
     try {
       const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
-      const response = await fetchRetry(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
 
-      if (!response?.ok) {
-        let errorMsg = `Transcription failed`;
-        try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
-        throw new Error(errorMsg); // Go to catch block
+      let transcriptionText = '';
+      for (let audioBlob of audioBlobs) {
+        const response = await fetchRetry(apiUrl, { method: 'POST', body: audioBlob, headers: { 'Content-Type': mimeType } });
+
+        if (!response?.ok) {
+          let errorMsg = `Transcription failed`;
+          try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch { /* Ignore */ }
+          throw new Error(errorMsg); // Go to catch block
+        }
+
+        const data = await response.json();
+        console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
+
+        transcriptionText += data.text.trim() + ' ';
       }
-
-      const data = await response.json();
-      console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
-
-      const transcriptionText = data.text.trim();
 
       let transcription = transcriptionsRef.current.find((t) => t.uuid == uuid);
 
@@ -1355,7 +1360,7 @@ const SpeechToText = () => {
 
     const [first, ...rest] = mergeTranscriptions;
 
-    const mergedBlob = await combineRecordings([
+    const mergedBlobs = await combineRecordings([
       ...first.audio.chunks,
       ...rest.flatMap((t) => t.audio?.chunks || []),
     ]);
@@ -1365,8 +1370,9 @@ const SpeechToText = () => {
       text: [first.text, ...rest.map((t) => t.text)].join(' '),
       audio: {
         ...first.audio,
-        chunks: [mergedBlob],
+        chunks: [...mergedBlobs],
         mimeType: 'audio/wav',
+        isMerged: true
       },
       translate: {
         ...first.translate,
@@ -1385,6 +1391,7 @@ const SpeechToText = () => {
     await sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, {
       isInterim: updatedFirst.isInterim,
       segmentCutoff: updatedFirst.segmentCutoff,
+      isAudioMerged: updatedFirst.audio.isMerged
     });
 
     for (const payload of rest) {
@@ -1426,23 +1433,76 @@ const SpeechToText = () => {
     // Calculate total length
     const numberOfChannels = Math.max(...buffers.map(b => b.numberOfChannels));
     const sampleRate = audioContext.sampleRate;
-    const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
-    // Create empty buffer for combined
-    const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+    // Flatten samples count
+    const totalSamples = buffers.reduce((sum, b) => sum + b.length, 0);
+    const maxSamples = sampleRate * 60; // 60 seconds cap per file
 
-    let offset = 0;
-    buffers.forEach(b => {
-      for (let channel = 0; channel < numberOfChannels; channel++) {
-        const channelData = b.getChannelData(channel) || new Float32Array(b.length);
-        outputBuffer.getChannelData(channel).set(channelData, offset);
+    let wavBlobs = []
+
+    // Create a flattened Float32Array for each channel
+    // Interleave channels per chunk
+    let concatenated = [];
+    buffers.forEach(b => concatenated.push(b));
+
+    // Helper to slice buffers into chunks
+    let offsetSample = 0;
+    let part = 0;
+    while (offsetSample < totalSamples) {
+      const partLength = Math.min(maxSamples, totalSamples - offsetSample);
+      const outputBuffer = audioContext.createBuffer(numberOfChannels, partLength, sampleRate);
+      let writePos = 0;
+      // Fill part buffer with samples across segments
+      let remaining = partLength;
+      let segIdx = 0;
+      let segOffset = offsetSample;
+      // Determine starting segment index and offset
+      let acc = 0;
+      for (segIdx = 0; segIdx < concatenated.length; segIdx++) {
+        if (acc + concatenated[segIdx].length > offsetSample) {
+          segOffset = offsetSample - acc;
+          break;
+        }
+        acc += concatenated[segIdx].length;
       }
-      offset += b.length;
-    });
-    
-    // Encode WAV
-    const wavBlob = bufferToWave(outputBuffer, totalLength);
+      // Write samples from segments
+      while (remaining > 0 && segIdx < concatenated.length) {
+        const segment = concatenated[segIdx];
+        const chunkSamples = Math.min(segment.length - segOffset, remaining);
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+          const input = segment.getChannelData(channel) || new Float32Array(segment.length);
+          const output = outputBuffer.getChannelData(channel);
+          output.set(input.subarray(segOffset, segOffset + chunkSamples), writePos);
+        }
+        writePos += chunkSamples;
+        remaining -= chunkSamples;
+        segIdx++;
+        segOffset = 0;
+      }
+      // Encode WAV and append link
+      const wavBlob = bufferToWave(outputBuffer, partLength);
+      wavBlobs.push(wavBlob);
 
-    return wavBlob;
+      offsetSample += partLength;
+    }
+
+    return wavBlobs;
+
+    // const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
+    // // Create empty buffer for combined
+    // const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+
+    // let offset = 0;
+    // buffers.forEach(b => {
+    //   for (let channel = 0; channel < numberOfChannels; channel++) {
+    //     const channelData = b.getChannelData(channel) || new Float32Array(b.length);
+    //     outputBuffer.getChannelData(channel).set(channelData, offset);
+    //   }
+    //   offset += b.length;
+    // });
+    // // Encode WAV
+    // const wavBlob = bufferToWave(outputBuffer, totalLength);
+
+    // return wavBlob;
 
   }
 
