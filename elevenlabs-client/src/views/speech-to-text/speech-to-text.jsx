@@ -1034,7 +1034,7 @@ const SpeechToText = () => {
 
 
     try {
-      const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}`;
+      const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}&num_speakers=2`;
 
       let transcriptionText = '';
       for (let audioBlob of audioBlobs) {
