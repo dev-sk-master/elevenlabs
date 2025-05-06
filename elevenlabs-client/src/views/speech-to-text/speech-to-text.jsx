@@ -966,17 +966,18 @@ const SpeechToText = () => {
 
     //const { uuid } = recordingRef.current;
     console.log('isAudioMerged', isAudioMerged)
+    let _chunks = [...chunks];
     if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
       console.log(`Append language ${formDataRef.current.language} audiochunk `)
       const languageAudioSrc = audioFiles[formDataRef.current.language];
 
       const response = await fetch(languageAudioSrc);
       const audioBlob = await response.blob();
-      chunks.unshift(audioBlob);
+      _chunks.unshift(audioBlob);
     }
 
 
-    const audioBlobs = isAudioMerged ? [...chunks] : [new Blob(chunks, { type: mimeType })];
+    const audioBlobs = isAudioMerged ? [..._chunks] : [new Blob(_chunks, { type: mimeType })];
 
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlobs.length}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
