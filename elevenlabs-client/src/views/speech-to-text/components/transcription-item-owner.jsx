@@ -114,15 +114,18 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                     {/* Moderation Controls on Hover (Owner Only) */}
                     {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
                     <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && /*item.translate?.status === 'completed' &&*/['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
-                        <div className="form-check me-2" style={{ display: 'inline-block' }}>
-                            <input className="form-check-input" type="checkbox"
-                                checked={mergeChecks.includes(item.uuid)}
-                                onChange={() => handleMergeCheck(item.uuid)}
-                            />
-                            <label className="form-check-label text-muted" >
-                                Merge item
-                            </label>
-                        </div>
+                        {item.status === 'completed' && (<>
+                            <div className="form-check me-2" style={{ display: 'inline-block' }}>
+                                <input className="form-check-input" type="checkbox"
+                                    checked={mergeChecks.includes(item.uuid)}
+                                    onChange={() => handleMergeCheck(item.uuid)}
+                                />
+                                <label className="form-check-label text-muted" >
+                                    Merge item
+                                </label>
+                            </div>
+                        </>)}
+
 
                         {item.translate?.status === 'completed' && (<>
                             <small className='text-muted me-2'>Moderation:</small>
