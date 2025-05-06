@@ -982,8 +982,8 @@ const SpeechToText = () => {
         ..._chunks
       ]);
       console.log('mergedResult', mergedResult)
-      _chunks = [...mergedResult.chunks]
-      // console.log('Language modified final', _chunks)
+      _chunks = mergedResult.chunks;
+      console.log('Language modified final', _chunks)
       isAudioMerged = true;
     }
 
