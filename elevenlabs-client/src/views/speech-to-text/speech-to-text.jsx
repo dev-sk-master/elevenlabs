@@ -1264,7 +1264,7 @@ const SpeechToText = () => {
   }, []);
 
   const [mergeChecks, setMergeChecks] = useState([]);
-
+  const mergeIsRunningRef = useRef(false);
   const handleMergeCheck = (uuid) => {
     setMergeChecks((prev) =>
       prev.includes(uuid)
@@ -1351,6 +1351,8 @@ const SpeechToText = () => {
 
     if (mergeTranscriptions.length < 2) return;
 
+    mergeIsRunningRef.current = true;
+
     const [first, ...rest] = mergeTranscriptions;
 
     const mergedBlob = await combineRecordings([
@@ -1372,7 +1374,7 @@ const SpeechToText = () => {
       }
     };
 
-    sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, {
+    await sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, {
       isInterim: updatedFirst.isInterim,
       segmentCutoff: updatedFirst.segmentCutoff,
     });
@@ -1392,6 +1394,7 @@ const SpeechToText = () => {
     );
 
     setMergeChecks([]);
+    mergeIsRunningRef.current = false;
   }, [mergeChecks]);
 
   // Auto-scroll effect
@@ -2087,22 +2090,24 @@ const SpeechToText = () => {
 
               {room.role === 'owner' && (
                 <div className="text-center mb-1">
-                  <button
-                    className={`btn btn-sm btn-primary mt-2 me-2`}
-                    onClick={() => handleMerge('all')}
-                    disabled={transcriptions.filter((t) => t.status === 'completed' && t.moderation_status == 'pending').length < 2}
-                  >
-                    Merge All Pending
-                  </button>
+                  {formData.moderation && (<>
+                    <button
+                      className={`btn btn-sm btn-primary mt-2 me-2`}
+                      onClick={() => handleMerge('all')}
+                      disabled={transcriptions.filter((t) => t.status === 'completed' && t.moderation_status == 'pending').length < 2 || mergeIsRunningRef.current}
+                    >
+                      Merge All Pending
+                    </button>
 
 
-                  <button
-                    className={`btn btn-sm btn-primary mt-2 me-2`}
-                    onClick={() => handleMerge('selected')}
-                    disabled={mergeChecks.length < 2}
-                  >
-                    Merge Selected Items
-                  </button>
+                    <button
+                      className={`btn btn-sm btn-primary mt-2 me-2`}
+                      onClick={() => handleMerge('selected')}
+                      disabled={mergeChecks.length < 2 || mergeIsRunningRef.current}
+                    >
+                      Merge Selected Items
+                    </button>
+                  </>)}
 
                   <button
                     className={`btn btn-sm btn-danger mt-2`}
