@@ -966,12 +966,14 @@ const SpeechToText = () => {
 
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlob.size}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
+    let currentSequence = Date.now();
     // Set initial processing/reprocessing status for both transcription and translation
     setTranscriptions(prev =>
       prev.map(item => {
         if (item.uuid === uuid) {
           return {
             ...item,
+            sequence: currentSequence,
             // Set transcription status
             status: ['reprocessing', 'completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
             //error: null, // Clear previous transcription error
@@ -1005,6 +1007,15 @@ const SpeechToText = () => {
       console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
       const transcriptionText = data.text.trim();
+
+      let transcription = transcriptionsRef.current.find((t) => t.uuid == uuid);
+
+      if (transcription && transcription.sequence !== currentSequence) {
+        console.warn(`Skipping outdated transcription for ${uuid}`);
+        return;
+      }
+
+
 
       // Update transcription status to completed first
       // Required before potentially calling translateData or setting translation failure
@@ -1395,7 +1406,7 @@ const SpeechToText = () => {
     const buffers = await Promise.all(
       recordings.map(async (item) => {
         let arrayBuffer;
-    
+
         if (item instanceof Blob) {
           arrayBuffer = await item.arrayBuffer();
         } else if (item instanceof ArrayBuffer) {
@@ -1403,7 +1414,7 @@ const SpeechToText = () => {
         } else {
           throw new Error('Unsupported recording type');
         }
-    
+
         return await audioContext.decodeAudioData(arrayBuffer);
       })
     );
