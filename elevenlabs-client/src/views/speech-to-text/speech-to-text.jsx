@@ -12,6 +12,9 @@ import useIsMobile from '../../hooks/useIsMobile';
 import ReactAudioPlayer from 'react-audio-player';
 import TranscriptionItemOwner from './components/transcription-item-owner';
 import { Helmet } from 'react-helmet-async';
+import audioFiles from '../../data/audio';
+
+
 // import { MediaRecorder, register } from 'extendable-media-recorder';
 // import { connect } from 'extendable-media-recorder-wav-encoder';
 
@@ -956,13 +959,23 @@ const SpeechToText = () => {
   }
 
   const sendAudioToServer = useCallback(async (uuid, chunks, mimeType, options) => {
-    let { isInterim, segmentCutoff, isAudioMerged = false } = options;
+    let { isInterim, segmentCutoff, isAudioMerged = false, forceLanguage = false } = options;
     console.log('sendAudioToServer chunks:', chunks, mimeType)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
     //if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
     //const { uuid } = recordingRef.current;
     console.log('isAudioMerged', isAudioMerged)
+    if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
+      console.log(`Append language ${formDataRef.current.language} audiochunk `)
+      const languageAudioSrc = audioFiles[formDataRef.current.language];
+
+      const response = await fetch(languageAudioSrc);
+      const audioBlob = await response.blob();
+      chunks.unshift(audioBlob);
+    }
+
+
     const audioBlobs = isAudioMerged ? [...chunks] : [new Blob(chunks, { type: mimeType })];
 
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlobs.length}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);

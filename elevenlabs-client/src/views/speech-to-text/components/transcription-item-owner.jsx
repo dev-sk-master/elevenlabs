@@ -77,7 +77,8 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             onClick={() => sendAudioToServer(item.uuid, item.audio.chunks, item.audio.mimeType, {
                                 isInterim: item.isInterim,
                                 segmentCutoff: item.segmentCutoff,
-                                isAudioMerged: item.audio?.isMerged
+                                isAudioMerged: item.audio?.isMerged,
+                                forceLanguage: true
                             })}
 
                         >
