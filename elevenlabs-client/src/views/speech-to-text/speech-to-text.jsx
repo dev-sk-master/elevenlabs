@@ -1429,14 +1429,31 @@ const SpeechToText = () => {
     const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
     // Create empty buffer for combined
     const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+
+    // let offset = 0;
+    // buffers.forEach(b => {
+    //   for (let channel = 0; channel < numberOfChannels; channel++) {
+    //     const channelData = b.getChannelData(channel) || new Float32Array(b.length);
+    //     outputBuffer.getChannelData(channel).set(channelData, offset);
+    //   }
+    //   offset += b.length;
+    // });
+
+    // Merge all buffers into outputBuffer
     let offset = 0;
-    buffers.forEach(b => {
+    for (const buffer of buffers) {
       for (let channel = 0; channel < numberOfChannels; channel++) {
-        const channelData = b.getChannelData(channel) || new Float32Array(b.length);
-        outputBuffer.getChannelData(channel).set(channelData, offset);
+        const output = outputBuffer.getChannelData(channel);
+        const input = buffer.numberOfChannels > channel
+          ? buffer.getChannelData(channel)
+          : new Float32Array(buffer.length); // fallback for missing channel
+
+        output.set(input, offset);
       }
-      offset += b.length;
-    });
+      offset += buffer.length;
+    }
+
+
     // Encode WAV
     const wavBlob = bufferToWave(outputBuffer, totalLength);
 
