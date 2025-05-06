@@ -37,7 +37,8 @@ const SpeechToText = () => {
     userSetDuration: 1000,
     moderation: false,
     disableSharing: false,
-    showInterimResults: false
+    showInterimResults: false,
+    numSpeakers: 2
   });
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
@@ -1034,7 +1035,7 @@ const SpeechToText = () => {
 
 
     try {
-      const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}&num_speakers=2`;
+      const apiUrl = `${import.meta.env.VITE_API_URL}/speechToText?language=${formDataRef.current.language}&num_speakers=${formDataRef.current.numSpeakers}`;
 
       let transcriptionText = '';
       for (let audioBlob of audioBlobs) {
@@ -1878,6 +1879,10 @@ const SpeechToText = () => {
                   <div className="form-check form-switch">
                     <input className="form-check-input" type="checkbox" role="switch" id="showInterimResultsSwitch" checked={formData.showInterimResults} onChange={(e) => setFormData(prev => ({ ...prev, showInterimResults: e.target.checked }))} />
                     <label className="form-check-label" htmlFor="showInterimResultsSwitch">Show interim results</label>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">No of speakers:</label>
+                    <input type="number" className="form-control" value={formData.numSpeakers} onChange={(e) => setFormData(prev => ({ ...prev, numSpeakers: Number(e.target.value) || 1 }))}  />
                   </div>
                 </div>
               </div>
