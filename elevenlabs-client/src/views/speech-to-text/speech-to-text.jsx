@@ -962,7 +962,7 @@ const SpeechToText = () => {
     //if (!recordingRef.current) { console.error("sendAudioToServer: recordingRef is missing."); return; }
 
     //const { uuid } = recordingRef.current;
-console.log('isAudioMerged',isAudioMerged)
+    console.log('isAudioMerged', isAudioMerged)
     const audioBlobs = isAudioMerged ? [...chunks] : [new Blob(chunks, { type: mimeType })];
 
     console.log(`Sending audio for segment ${uuid}, Size: ${audioBlobs.length}, Type: ${mimeType}, Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
@@ -1360,7 +1360,7 @@ console.log('isAudioMerged',isAudioMerged)
 
     const [first, ...rest] = mergeTranscriptions;
 
-    const mergedBlobs = await combineRecordings([
+    const mergedResult = await combineRecordings([
       ...first.audio.chunks,
       ...rest.flatMap((t) => t.audio?.chunks || []),
     ]);
@@ -1370,9 +1370,10 @@ console.log('isAudioMerged',isAudioMerged)
       text: [first.text, ...rest.map((t) => t.text)].join(' '),
       audio: {
         ...first.audio,
-        chunks: [...mergedBlobs],
+        chunks: [...mergedResult.chunks],
         mimeType: 'audio/wav',
-        isMerged: true
+        isMerged: true,
+        mergedAudio: mergedResult.mergedAudio
       },
       translate: {
         ...first.translate,
@@ -1433,11 +1434,28 @@ console.log('isAudioMerged',isAudioMerged)
     // Calculate total length
     const numberOfChannels = Math.max(...buffers.map(b => b.numberOfChannels));
     const sampleRate = audioContext.sampleRate;
-    // Flatten samples count
+
+    // Create single merged buffer
+    const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
+    const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+
+    let offset = 0;
+    buffers.forEach(b => {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const channelData = b.getChannelData(channel) || new Float32Array(b.length);
+        outputBuffer.getChannelData(channel).set(channelData, offset);
+      }
+      offset += b.length;
+    });
+    // Encode WAV
+    const wavBlobFull = bufferToWave(outputBuffer, totalLength);
+
+
+    // Create 60-second chunks
     const totalSamples = buffers.reduce((sum, b) => sum + b.length, 0);
     const maxSamples = sampleRate * 60; // 60 seconds cap per file
 
-    let wavBlobs = []
+    let wavBlobs = [];
 
     // Create a flattened Float32Array for each channel
     // Interleave channels per chunk
@@ -1449,7 +1467,7 @@ console.log('isAudioMerged',isAudioMerged)
     let part = 0;
     while (offsetSample < totalSamples) {
       const partLength = Math.min(maxSamples, totalSamples - offsetSample);
-      const outputBuffer = audioContext.createBuffer(numberOfChannels, partLength, sampleRate);
+      const chunkBuffer = audioContext.createBuffer(numberOfChannels, partLength, sampleRate);
       let writePos = 0;
       // Fill part buffer with samples across segments
       let remaining = partLength;
@@ -1470,7 +1488,7 @@ console.log('isAudioMerged',isAudioMerged)
         const chunkSamples = Math.min(segment.length - segOffset, remaining);
         for (let channel = 0; channel < numberOfChannels; channel++) {
           const input = segment.getChannelData(channel) || new Float32Array(segment.length);
-          const output = outputBuffer.getChannelData(channel);
+          const output = chunkBuffer.getChannelData(channel);
           output.set(input.subarray(segOffset, segOffset + chunkSamples), writePos);
         }
         writePos += chunkSamples;
@@ -1479,30 +1497,20 @@ console.log('isAudioMerged',isAudioMerged)
         segOffset = 0;
       }
       // Encode WAV and append link
-      const wavBlob = bufferToWave(outputBuffer, partLength);
+      const wavBlob = bufferToWave(chunkBuffer, partLength);
       wavBlobs.push(wavBlob);
 
       offsetSample += partLength;
     }
 
-    return wavBlobs;
+    //return wavBlobs;
 
-    // const totalLength = buffers.reduce((sum, b) => sum + b.length, 0);
-    // // Create empty buffer for combined
-    // const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
 
-    // let offset = 0;
-    // buffers.forEach(b => {
-    //   for (let channel = 0; channel < numberOfChannels; channel++) {
-    //     const channelData = b.getChannelData(channel) || new Float32Array(b.length);
-    //     outputBuffer.getChannelData(channel).set(channelData, offset);
-    //   }
-    //   offset += b.length;
-    // });
-    // // Encode WAV
-    // const wavBlob = bufferToWave(outputBuffer, totalLength);
+
 
     // return wavBlob;
+
+    return { mergedAudio: wavBlobFull, chunks: wavBlobs };
 
   }
 

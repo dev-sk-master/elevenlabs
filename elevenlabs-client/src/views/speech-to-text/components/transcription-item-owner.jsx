@@ -49,7 +49,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                     {/* {hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType && ( */}
                     <div className={`mt-2 border-top pt-2 collapse ${hoveredIndex === idx && item.audio?.chunks?.length > 0 && item.audio?.mimeType ? 'show' : ''}`}>
                         {(() => {
-                            const audioUrl = createAudioUrl(item.audio.chunks, item.audio.mimeType);
+                            const audioUrl = createAudioUrl(item.audio?.isMerged ? [item.audio?.mergedAudio] : item.audio.chunks, item.audio.mimeType);
                             if (!audioUrl) return <small className="text-danger">Could not load audio preview.</small>;
                             return (<><ReactAudioPlayer
                                 key={audioUrl}
