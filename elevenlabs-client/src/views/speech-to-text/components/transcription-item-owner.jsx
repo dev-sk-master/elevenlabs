@@ -113,7 +113,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
 
                     {/* Moderation Controls on Hover (Owner Only) */}
                     {/* {room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', 'approved', 'rejected'].includes(item.moderation_status) && ( */}
-                    <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && item.translate?.status === 'completed' && ['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
+                    <div className={`mt-2 pt-2 border-top text-center moderation-controls collapse ${room.role === 'owner' && hoveredIndex === idx && formData.moderation && /*item.translate?.status === 'completed' &&*/['pending', /*'approved', 'rejected'*/].includes(item.moderation_status) ? 'show' : ''}`}>
                         <div className="form-check me-2" style={{ display: 'inline-block' }}>
                             <input className="form-check-input" type="checkbox"
                                 checked={mergeChecks.includes(item.uuid)}
@@ -124,14 +124,17 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             </label>
                         </div>
 
-                        <small className='text-muted me-2'>Moderation:</small>
-                        <div className="btn-group btn-group-sm" role="group">
-                            <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
-                            <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
-                            {/* {item.moderation_status !== 'pending' && (
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => handleModeration(item.uuid, 'pending')}>Reset</button>
-                  )} */}
-                        </div>
+                        {item.translate?.status === 'completed' && (<>
+                            <small className='text-muted me-2'>Moderation:</small>
+                            <div className="btn-group btn-group-sm" role="group">
+                                <button type="button" className={`btn ${item.moderation_status === 'approved' ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleModeration(item.uuid, 'approved')} disabled={item.moderation_status === 'approved'}>Approve</button>
+                                <button type="button" className={`btn ${item.moderation_status === 'rejected' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleModeration(item.uuid, 'rejected')} disabled={item.moderation_status === 'rejected'}>Reject</button>
+                                {/* {item.moderation_status !== 'pending' && (
+                                    <button type="button" className="btn btn-outline-secondary" onClick={() => handleModeration(item.uuid, 'pending')}>Reset</button>
+                                )} */}
+                            </div>
+                        </>)}
+
                     </div>
                     {/*} )}*/}
                 </div>

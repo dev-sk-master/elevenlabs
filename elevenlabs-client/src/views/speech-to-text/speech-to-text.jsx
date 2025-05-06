@@ -1341,7 +1341,7 @@ const SpeechToText = () => {
 
     if (action === 'all') {
       _mergeChecks = prevTranscriptions
-        .filter((t) => t.translate?.status === 'completed' && t.moderation_status === 'pending')
+        .filter((t) => /*t.translate?.status === 'completed' &&*/ t.moderation_status === 'pending')
         .map((t) => t.uuid);
     }
 
