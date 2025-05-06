@@ -1,7 +1,7 @@
 import ml from './ml.webm';
 
 const audioFiles = {
-    ml: ml,
+    ml: { src: ml, text: "മലയാളം." },
 };
 
 

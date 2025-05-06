@@ -970,7 +970,7 @@ const SpeechToText = () => {
     let _chunks = chunks.map(blob => new Blob([blob], { type: blob.type || mimeType }));
     if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
       console.log(`Append language ${formDataRef.current.language} audiochunk `)
-      const languageAudioSrc = audioFiles[formDataRef.current.language];
+      const languageAudioSrc = audioFiles[formDataRef.current.language].src;
 
       const response = await fetch(languageAudioSrc);
       const audioBlob = await response.blob();
@@ -1049,7 +1049,13 @@ const SpeechToText = () => {
         const data = await response.json();
         console.log(`Transcription received for ${uuid}: "${data.text}", Interim: ${isInterim}, segmentCutoff: ${segmentCutoff}`);
 
-        transcriptionText += data.text.trim() + ' ';
+        let responseText = data.text.trim();
+        //remove text transcribe from language audio
+        if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
+          responseText = responseText.replace(audioFiles[formDataRef.current.language].text, '');
+        }
+
+        transcriptionText += responseText + ' ';
       }
 
       let transcription = transcriptionsRef.current.find((t) => t.uuid == uuid);
