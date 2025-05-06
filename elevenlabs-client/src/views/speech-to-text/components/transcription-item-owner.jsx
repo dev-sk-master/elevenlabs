@@ -5,8 +5,8 @@ import ContentEditable from 'react-contenteditable';
 
 
 
-const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit,  handleMergeCheck, mergeChecks }) => {
-    // console.log('render TranscriptionItemOwner', idx)
+const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handleMouseLeave, activeColumn, isMobile, hoveredIndex, room, cleanHtml, createAudioUrl, formData, handleModeration, handleTextEdit, handleMergeCheck, mergeChecks }) => {
+    //console.log('render TranscriptionItemOwner', idx)
     // useEffect(() => {
     //     console.log('inside render TranscriptionItemOwner', idx)
     // }, [])
@@ -137,6 +137,17 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                 </div>
             </div>
         </div>
+    );
+}, (prevProps, nextProps) => {
+    return (
+        JSON.stringify(prevProps.item) === JSON.stringify(nextProps.item) &&
+        prevProps.idx === nextProps.idx &&
+        prevProps.hoveredIndex === nextProps.hoveredIndex &&
+        prevProps.activeColumn === nextProps.activeColumn &&
+        //prevProps.isMobile === nextProps.isMobile &&
+        JSON.stringify(prevProps.mergeChecks) === JSON.stringify(nextProps.mergeChecks) &&
+        //prevProps.room === nextProps.room &&
+        JSON.stringify({ moderation: prevProps.formData.moderation, moderation_status: prevProps.formData.moderation_status }) === JSON.stringify({ moderation: nextProps.formData.moderation, moderation_status: nextProps.formData.moderation_status })
     );
 });
 
