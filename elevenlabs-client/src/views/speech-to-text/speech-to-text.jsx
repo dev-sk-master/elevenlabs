@@ -955,7 +955,7 @@ const SpeechToText = () => {
     }
   }
 
-  const sendAudioToServer = async (uuid, chunks, mimeType, options) => {
+  const sendAudioToServer = useCallback(async (uuid, chunks, mimeType, options) => {
     let { isInterim, segmentCutoff } = options;
     console.log('sendAudioToServer chunks:', chunks)
     if (!chunks || chunks.length === 0) { console.warn("sendAudioToServer: empty chunks."); return; }
@@ -1072,11 +1072,11 @@ const SpeechToText = () => {
         })
       );
     }
-  };
+  }, []);
 
   // The translateData function remains unchanged
   // The check for translateLanguage inside it still provides a safety layer
-  const translateData = async (uuid, textToTranslate, options) => {
+  const translateData = useCallback(async (uuid, textToTranslate, options) => {
     let { isInterim, segmentCutoff } = options;
     // Keep this check for robustness within translateData itself
     if (!textToTranslate || !formDataRef.current.translateLanguage) {
@@ -1139,7 +1139,7 @@ const SpeechToText = () => {
         prev.map(item => (item.uuid === uuid ? { ...item, translate: { ...(item.translate || {}), error: error.message, status: 'failed' } } : item))
       );
     }
-  };
+  }, []);
 
   // --- REMOVED: combineAudioChunks function ---
   // The full audio is now generated directly by fullMediaRecorderRef's onstop handler.
@@ -1374,6 +1374,14 @@ const SpeechToText = () => {
       }
     };
 
+    setTranscriptions((prev) =>
+      prev.map((t) => {
+        if (t.uuid === first.uuid) return updatedFirst;
+        if (_mergeChecks.includes(t.uuid)) return null;
+        return t;
+      }).filter(Boolean)
+    );
+
     await sendAudioToServer(updatedFirst.uuid, updatedFirst.audio.chunks, updatedFirst.audio.mimeType, {
       isInterim: updatedFirst.isInterim,
       segmentCutoff: updatedFirst.segmentCutoff,
@@ -1385,16 +1393,10 @@ const SpeechToText = () => {
 
     resendPendingSocketTranscriptions();
 
-    setTranscriptions((prev) =>
-      prev.map((t) => {
-        if (t.uuid === first.uuid) return updatedFirst;
-        if (_mergeChecks.includes(t.uuid)) return null;
-        return t;
-      }).filter(Boolean)
-    );
-
     setMergeChecks([]);
+
     mergeIsRunningRef.current = false;
+
   }, [mergeChecks]);
 
   // Auto-scroll effect
