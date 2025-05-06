@@ -975,6 +975,7 @@ const SpeechToText = () => {
       const response = await fetch(languageAudioSrc);
       const audioBlob = await response.blob();
       // const audioBlob = new Blob([originalBlob], { type: mimeType });
+      console.log('audioblob', audioBlob)
       _chunks.unshift(audioBlob);
       console.log('Language modified chunks', _chunks)
       const mergedResult = await combineRecordings([
