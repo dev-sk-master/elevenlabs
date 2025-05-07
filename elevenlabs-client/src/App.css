@@ -1,0 +1,4 @@
+.bg-light-pink {
+    background-color: #ffb6c1;
+    transition: background-color 0.5s ease;
+  }

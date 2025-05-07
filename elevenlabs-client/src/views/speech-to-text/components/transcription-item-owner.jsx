@@ -27,6 +27,7 @@ const TranscriptionItemOwner = React.memo(({ item, idx, handleMouseEnter, handle
                             {item.status === 'listening' && <span className="badge bg-info me-1">Listening...</span>}
                             {item.status === 'processing' && <span className="badge bg-info me-1">Processing...</span>}
                             {item.status === 'reprocessing' && <span className="badge bg-warning text-dark me-1">Reprocessing...</span>}
+                            {item.status === 'merging' && <span className="badge bg-warning text-dark me-1">Merging...</span>}
                             {item.status === 'failed' && <span className="badge bg-danger me-1">Failed</span>}
                             {item.status == 'completed' && item.moderation_status === 'rejected' && <span className="badge bg-danger me-1">Rejected</span>}
                             {item.status == 'completed' && item.moderation_status === 'pending' && formData.moderation && <span className="badge bg-secondary me-1">Pending</span>}

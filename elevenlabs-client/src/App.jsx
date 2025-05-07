@@ -3,6 +3,8 @@ import {
   Routes,
   Route
 } from "react-router-dom";
+import "./App.css";
+
 
 import DefaultLayout from "./layouts/default";
 import HomePage from "./views/home";

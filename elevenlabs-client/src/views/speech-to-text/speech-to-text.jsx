@@ -42,6 +42,7 @@ const SpeechToText = () => {
   });
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptions, setTranscriptions] = useState([]);
+  const [newTranscriptionIds, setNewTranscriptionIds] = useState(new Set());
   const [fullRecordingData, setFullRecordingData] = useState({
     blob: null, mimeType: null, url: null, key: null
   });
@@ -183,15 +184,24 @@ const SpeechToText = () => {
       //if (socket.id === senderId && formDataRef.current.disableSharing) return;
       //if (socket.id === senderId && room?.role !== 'owner') return;      
       //if (room?.roomId != roomId || room?.role == 'owner') return;
-      if (initialDataLoadedRef.current) return;
+      if (room && room.role == 'owner' && initialDataLoadedRef.current) return;
 
       console.log(`📨 Transcriptions from ${ownerId} for room ${roomId}:`, receivedTranscriptions.length, receivedTranscriptions);
 
       setTranscriptions(prev => {
         const map = new Map(prev.map(t => [t.uuid, t]));
+        const newUUIDs = [];
+
         for (const t of receivedTranscriptions) {
           const existing = map.get(t.uuid);
           if (existing) {
+            const hasNewText = existing.text !== t.text;
+            const hasNewTranslateText = (existing.translate?.text || '') !== (t.translate?.text || '');
+            if (hasNewText || hasNewTranslateText) {
+              newUUIDs.push(t.uuid);
+            }
+
+
             map.set(t.uuid, {
               ...existing, ...t,
               audio: { ...(existing.audio || {}), ...(t.audio || {}) },
@@ -199,8 +209,28 @@ const SpeechToText = () => {
             });
           } else {
             map.set(t.uuid, t);
+            newUUIDs.push(t.uuid); // Track new transcription IDs
           }
         }
+
+        if (newUUIDs.length > 0) {
+          setNewTranscriptionIds(prev => {
+            const updated = new Set(prev);
+            newUUIDs.forEach(id => {
+              updated.add(id);
+              setTimeout(() => {
+                setNewTranscriptionIds(prev => {
+                  const next = new Set(prev);
+                  next.delete(id);
+                  return next;
+                });
+              }, 10000); // 10 seconds
+            });
+            return updated;
+          });
+        }
+
+
         // Sort only once after processing all items
         return Array.from(map.values()).sort((a, b) => moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf() - moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss.SSS').valueOf());
       });
@@ -1016,7 +1046,9 @@ const SpeechToText = () => {
             ...item,
             sequence: currentSequence,
             // Set transcription status
-            status: ['reprocessing', 'completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
+            status: item.status === 'merging'
+              ? 'merging'
+              : ['reprocessing', 'completed', 'failed'].includes(item.status) ? 'reprocessing' : 'processing',
             //error: null, // Clear previous transcription error
             // Set translation status - assuming it might be needed
             // translate: {
@@ -1413,6 +1445,7 @@ const SpeechToText = () => {
 
     const updatedFirst = {
       ...first,
+      status: 'merging',
       text: [first.text, ...rest.map((t) => t.text)].join(' '),
       audio: {
         ...first.audio,
@@ -2114,7 +2147,9 @@ const SpeechToText = () => {
                                 <span
                                   key={`transcription-${item.uuid}`}
                                   onMouseEnter={() => handleMouseEnter(idx)}
-                                  className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : ''}`}
+                                  className={`pe-1 ${hoveredIndex === idx ? item.isInterim ? 'bg-warning' : 'bg-info' : newTranscriptionIds.has(item.uuid)
+                                    ? 'bg-light-pink'
+                                    : ''}`}
                                   style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em', whiteSpace: 'pre-line' }}
                                 >
                                   {cleanHtml(item.text)}
@@ -2169,7 +2204,9 @@ const SpeechToText = () => {
                                 <span
                                   key={`translation-${item.uuid}`}
                                   onMouseEnter={() => handleMouseEnter(idx)}
-                                  className={`pe-1 ${hoveredIndex === idx ? (item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info') : ''}`}
+                                  className={`pe-1 ${hoveredIndex === idx ? (item.isInterim || item.translate?.isInterim ? 'bg-warning' : 'bg-info') : newTranscriptionIds.has(item.uuid)
+                                    ? 'bg-light-pink'
+                                    : ''}`}
                                   style={{ transition: 'background-color 0.2s ease-in-out', minHeight: '5em', whiteSpace: 'pre-line' }}
                                 >
                                   {cleanHtml(text)}
