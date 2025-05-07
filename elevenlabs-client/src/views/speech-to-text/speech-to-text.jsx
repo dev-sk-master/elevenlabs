@@ -971,7 +971,7 @@ const SpeechToText = () => {
     let _chunks = chunks.map(blob => new Blob([blob], { type: blob.type || mimeType }));
     if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
       console.log(`Append language ${formDataRef.current.language} audiochunk `)
-      const languageAudioSrc = audioFiles[formDataRef.current.language].src;
+      const languageAudioSrc = audioFiles[formDataRef.current.language];
 
       const response = await fetch(languageAudioSrc);
       const audioBlob = await response.blob();
@@ -1053,7 +1053,7 @@ const SpeechToText = () => {
         let responseText = data.text.trim();
         //remove text transcribe from language audio
         if (forceLanguage && formDataRef.current.language && audioFiles[formDataRef.current.language]) {
-          responseText = responseText.replace(audioFiles[formDataRef.current.language].text, '');
+          responseText = responseText.replace(/^[^.|]*[.|]/, '');
         }
 
         transcriptionText += responseText + ' ';
@@ -1882,7 +1882,7 @@ const SpeechToText = () => {
                   </div>
                   <div className="mb-3">
                     <label className="form-label">No of speakers:</label>
-                    <input type="number" className="form-control" value={formData.numSpeakers} onChange={(e) => setFormData(prev => ({ ...prev, numSpeakers: Number(e.target.value) || 1 }))}  />
+                    <input type="number" className="form-control" value={formData.numSpeakers} onChange={(e) => setFormData(prev => ({ ...prev, numSpeakers: Number(e.target.value) || 1 }))} />
                   </div>
                 </div>
               </div>
